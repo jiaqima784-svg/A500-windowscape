@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>西湖窗景 · 每日一句诗词</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#060e18;font-family:"KaiTi","楷体","STKaiti","STSong","SimSun",serif;user-select:none}
+
+/* ═══ 背景层（16:9 保持比例） ═══ */
+#bg-wrap{position:fixed;inset:0;z-index:0;display:flex;align-items:center;justify-content:center;background:#0a1628}
+#bg-img{position:absolute;width:100%;height:100%;object-fit:cover;object-position:center;display:block;filter:brightness(.72) saturate(1.05);transition:filter 2s ease,opacity 1.2s ease;opacity:0;aspect-ratio:16/9}
+#bg-img.loaded{opacity:1}
+#bg-grad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,8,18,.25) 0%,rgba(0,8,18,.02) 30%,rgba(0,8,18,.02) 70%,rgba(0,8,18,.5) 100%)}
+#rain-canvas{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.2s}
+body.w-rain #rain-canvas{opacity:1}
+#fog-layer{position:fixed;inset:0;z-index:3;pointer-events:none;opacity:0;transition:opacity 2s;background:rgba(195,208,218,.26)}
+body.w-fog #fog-layer{opacity:1;animation:fogP 9s ease-in-out infinite}
+@keyframes fogP{0%,100%{opacity:.9}50%{opacity:.5}}
+.snowflake{position:fixed;top:-24px;color:#d6eaf8;pointer-events:none;z-index:5;animation:snowF linear infinite}
+@keyframes snowF{0%{transform:translateY(0) rotate(0);opacity:.75}100%{transform:translateY(110vh) rotate(400deg);opacity:0}}
+
+/* ═══ 顶部状态栏 ═══ */
+#status-bar{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:clamp(10px,1.8vh,22px) clamp(16px,3vw,48px);background:linear-gradient(180deg,rgba(0,8,18,.45),transparent)}
+#clock-wrap{color:rgba(255,255,255,.88);text-shadow:0 1px 8px rgba(0,0,0,.55)}
+#clock-time{font-size:clamp(20px,3vw,46px);font-weight:300;letter-spacing:.04em;font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+#clock-date{font-size:clamp(10px,1vw,16px);opacity:.72;font-family:"PingFang SC","Microsoft YaHei",sans-serif;margin-top:2px}
+#weather-info{display:flex;align-items:center;gap:clamp(8px,1.5vw,18px);color:rgba(255,255,255,.82);text-shadow:0 1px 6px rgba(0,0,0,.5);font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+#weather-icon{font-size:clamp(18px,2.5vw,36px)}
+#weather-text{font-size:clamp(10px,1.1vw,16px);line-height:1.55;text-align:right}
+#weather-desc{font-size:clamp(12px,1.3vw,18px);font-weight:500}
+#audio-btn{background:rgba(0,0,0,.35);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.2);border-radius:50%;width:clamp(34px,3.5vw,50px);height:clamp(34px,3.5vw,50px);display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.85);font-size:clamp(13px,1.5vw,20px);transition:background .3s,transform .2s;flex-shrink:0}
+#audio-btn:hover{background:rgba(255,255,255,.18);transform:scale(1.08)}
+#audio-btn.playing{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.2)}50%{box-shadow:0 0 0 8px rgba(255,255,255,0)}}
+
+/* ═══ 竖排诗词区域（右侧，无底色，手写风，一句一列） ═══ */
+#poem-scroll{
+  position:fixed;
+  top:50%;right:clamp(24px,5vw,80px);
+  transform:translateY(-50%);
+  z-index:10;
+  opacity:0;
+  transition:opacity .7s ease;
+  pointer-events:none;
+  max-height:80vh;
+}
+#poem-scroll.visible{opacity:1}
+
+/* 诗词容器 - 竖排从右到左 */
+#poem-container{
+  display:flex;
+  flex-direction:row-reverse; /* 从右到左排列各列 */
+  gap:clamp(12px,1.5vw,24px);
+  align-items:flex-start;
+}
+
+/* 每一句诗（一列） */
+.poem-line{
+  writing-mode:vertical-rl;
+  text-orientation:mixed;
+  font-family:"KaiTi","楷体","STKaiti","FangSong","仿宋",serif;
+  font-size:clamp(22px,2.8vw,42px);
+  line-height:1.6;
+  letter-spacing:.15em;
+  color:rgba(255,252,235,.95);
+  text-shadow:
+    0 1px 3px rgba(0,0,0,.6),
+    0 0 20px rgba(0,0,0,.3);
+  filter:drop-shadow(0 0 1px rgba(0,0,0,.4));
+  white-space:nowrap;
+}
+
+/* 署名列 */
+#poem-sig-col{
+  writing-mode:vertical-rl;
+  text-orientation:mixed;
+  font-family:"KaiTi","楷体","STKaiti",serif;
+  font-size:clamp(12px,1.3vw,20px);
+  color:rgba(215,190,110,.78);
+  letter-spacing:.12em;
+  text-shadow:0 1px 4px rgba(0,0,0,.5);
+  margin-right:clamp(8px,1vw,16px);
+  padding-top:clamp(20px,2vh,40px);
+}
+
+#poem-context-tag{
+  position:fixed;
+  bottom:clamp(110px,12vh,150px);
+  right:clamp(24px,5vw,80px);
+  z-index:12;
+  font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:clamp(9px,.8vw,12px);
+  color:rgba(255,255,255,.32);
+  letter-spacing:.08em;
+  opacity:0;
+  transition:opacity .7s ease;
+  pointer-events:none;
+}
+#poem-context-tag.visible{opacity:1}
+
+/* ═══ 情感标签 ═══ */
+#emotion-tag{
+  position:fixed;
+  bottom:clamp(80px,10vh,120px);
+  right:clamp(24px,5vw,80px);
+  z-index:12;
+  display:flex;
+  align-items:center;
+  gap:clamp(6px,.6vw,12px);
+  opacity:0;
+  transition:opacity .7s ease;
+  pointer-events:none;
+}
+#emotion-tag.visible{opacity:1}
+
+.emotion-name{
+  font-family:"KaiTi","楷体","STKaiti",serif;
+  font-size:clamp(12px,1.2vw,20px);
+  color:rgba(215,190,110,.9);
+  letter-spacing:.1em;
+  text-shadow:0 1px 4px rgba(0,0,0,.4);
+}
+
+.emotion-dot{
+  font-size:clamp(10px,1vw,14px);
+  color:rgba(215,190,110,.5);
+}
+
+.emotion-desc{
+  font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:clamp(9px,.85vw,13px);
+  color:rgba(255,255,255,.45);
+  letter-spacing:.06em;
+}
+
+/* ═══ 意境元素 ═══ */
+#elements-tag{
+  position:fixed;
+  bottom:clamp(145px,15vh,185px);
+  right:clamp(24px,5vw,80px);
+  z-index:12;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:clamp(6px,.6vw,12px);
+  max-width:clamp(200px,25vw,300px);
+  opacity:0;
+  transition:opacity .7s ease;
+  pointer-events:none;
+}
+#elements-tag.visible{opacity:1}
+
+.element-item{
+  font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:clamp(8px,.75vw,11px);
+  padding:clamp(3px,.3vh,6px) clamp(8px,.9vw,14px);
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:24px;
+  color:rgba(255,255,255,.55);
+  letter-spacing:.05em;
+}
+
+/* ═══ 底部加载提示 ═══ */
+#loading-tip{position:fixed;bottom:clamp(80px,8vh,110px);left:50%;transform:translateX(-50%);z-index:20;font-family:"PingFang SC","Microsoft YaHei",sans-serif;font-size:clamp(10px,1vw,14px);color:rgba(255,255,255,.38);letter-spacing:.1em;transition:opacity .8s}
+#img-credit{position:fixed;bottom:clamp(10px,1.5vh,18px);left:clamp(12px,2vw,28px);z-index:20;font-family:"PingFang SC","Microsoft YaHei",sans-serif;font-size:clamp(9px,.75vw,11px);color:rgba(255,255,255,.22);letter-spacing:.05em}
+
+/* ═══ 模式按钮 ═══ */
+#mode-bar{position:fixed;bottom:clamp(12px,2vh,24px);right:clamp(12px,2vw,28px);z-index:30;display:flex;gap:clamp(6px,1vw,12px);align-items:center}
+.mode-btn{font-family:"PingFang SC","Microsoft YaHei",sans-serif;font-size:clamp(10px,1vw,14px);padding:clamp(5px,.7vh,10px) clamp(14px,1.8vw,24px);border-radius:24px;cursor:pointer;transition:all .35s;letter-spacing:.06em;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.32);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:rgba(255,255,255,.65)}
+.mode-btn:hover{background:rgba(255,255,255,.12)}
+.mode-btn.active{background:rgba(215,175,60,.25);border-color:rgba(215,175,60,.7);color:rgba(255,230,120,.98);box-shadow:0 0 20px rgba(215,175,60,.15)}
+
+/* ═══ 我的·西湖 控制面板 ═══ */
+#my-panel{position:fixed;bottom:clamp(60px,7vh,80px);left:50%;transform:translateX(-50%);z-index:30;width:min(780px,94vw);background:rgba(0,0,0,.55);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:clamp(16px,2.5vh,28px) clamp(16px,3vw,44px);opacity:0;pointer-events:none;transition:opacity .4s,transform .4s;transform:translateX(-50%) translateY(12px)}
+#my-panel.open{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+.panel-row{display:flex;align-items:center;gap:clamp(10px,1.8vw,24px);margin-top:clamp(8px,1.2vh,14px);flex-wrap:wrap}
+.panel-label{font-family:"PingFang SC","Microsoft YaHei",sans-serif;font-size:clamp(11px,1vw,15px);color:rgba(200,200,200,.65);white-space:none;min-width:2.5em}
+.btn-group{display:flex;gap:8px;flex-wrap:wrap}
+.seg-btn{font-family:"PingFang SC","Microsoft YaHei",sans-serif;font-size:clamp(11px,1vw,15px);padding:clamp(4px,.6vh,8px) clamp(12px,1.4vw,20px);border-radius:4px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:rgba(255,255,255,.7);cursor:pointer;transition:background .2s,border-color .2s,color .2s;letter-spacing:.06em}
+.seg-btn:hover{background:rgba(255,255,255,.15)}
+.seg-btn.active{background:rgba(220,180,80,.25);border-color:rgba(220,180,80,.7);color:rgba(255,230,120,.98)}
+#btn-random{margin-left:auto;font-family:"PingFang SC","Microsoft YaHei",sans-serif;font-size:clamp(11px,1vw,15px);padding:clamp(5px,.7vh,10px) clamp(16px,2vw,28px);background:rgba(220,160,60,.2);border:1px solid rgba(220,180,80,.45);color:rgba(255,230,120,.92);border-radius:6px;cursor:pointer;transition:background .2s,transform .15s;letter-spacing:.08em}
+#btn-random:hover{background:rgba(220,160,60,.35);transform:scale(1.04)}
+</style>
+</head>
+<body>
+
+<div id="bg-wrap">
+  <img id="bg-img" src="" alt="西湖风景"/>
+  <div id="bg-grad"></div>
+  <canvas id="rain-canvas"></canvas>
+  <div id="fog-layer"></div>
+</div>
+
+<div id="status-bar">
+  <div id="clock-wrap">
+    <div id="clock-time">--:--:--</div>
+    <div id="clock-date">正在获取时间...</div>
+  </div>
+  <div id="weather-info">
+    <div id="weather-icon">☁</div>
+    <div id="weather-text">
+      <div id="weather-desc">正在获取天气...</div>
+      <div id="weather-temp" style="font-size:clamp(9px,.85vw,13px);opacity:.7;margin-top:1px"></div>
+    </div>
+  </div>
+  <button id="audio-btn" onclick="toggleAudio()" title="西湖白噪音">🌊</button>
+</div>
+
+<!-- 竖排诗词（右侧，无底色，一句一列） -->
+<div id="poem-scroll">
+  <div id="poem-container">
+    <!-- 诗句列将动态插入 -->
+    <div id="poem-sig-col"></div>
+  </div>
+</div>
+<div id="poem-context-tag"></div>
+
+<!-- 意境元素 -->
+<div id="elements-tag"></div>
+
+<!-- 情感标签 -->
+<div id="emotion-tag">
+  <span class="emotion-name"></span>
+  <span class="emotion-dot">·</span>
+  <span class="emotion-desc"></span>
+</div>
+
+<div id="loading-tip">正在获取西湖实况天气...</div>
+<div id="img-credit"></div>
+
+<!-- 模式切换按钮 -->
+<div id="mode-bar">
+  <button class="mode-btn active" id="btn-now" onclick="switchMode('now')">此刻·西湖</button>
+  <button class="mode-btn" id="btn-my" onclick="switchMode('my')">我的·西湖</button>
+</div>
+
+<!-- 我的·西湖 控制面板 -->
+<div id="my-panel">
+  <div class="panel-row">
+    <span class="panel-label">季节</span>
+    <div class="btn-group" id="sg-season">
+      <button class="seg-btn active" data-v="spring" onclick="mySel('season',this)">春</button>
+      <button class="seg-btn" data-v="summer" onclick="mySel('season',this)">夏</button>
+      <button class="seg-btn" data-v="autumn" onclick="mySel('season',this)">秋</button>
+      <button class="seg-btn" data-v="winter" onclick="mySel('season',this)">冬</button>
+    </div>
+    <span class="panel-label" style="margin-left:clamp(8px,2vw,24px)">时段</span>
+    <div class="btn-group" id="sg-period">
+      <button class="seg-btn active" data-v="dawn" onclick="mySel('period',this)">晨</button>
+      <button class="seg-btn" data-v="day" onclick="mySel('period',this)">日</button>
+      <button class="seg-btn" data-v="dusk" onclick="mySel('period',this)">暮</button>
+      <button class="seg-btn" data-v="night" onclick="mySel('period',this)">夜</button>
+    </div>
+  </div>
+  <div class="panel-row">
+    <span class="panel-label">天气</span>
+    <div class="btn-group" id="sg-weather">
+      <button class="seg-btn active" data-v="sunny" onclick="mySel('weather',this)">晴</button>
+      <button class="seg-btn" data-v="rain" onclick="mySel('weather',this)">雨</button>
+      <button class="seg-btn" data-v="snow" onclick="mySel('weather',this)">雪</button>
+      <button class="seg-btn" data-v="fog" onclick="mySel('weather',this)">雾</button>
+      <button class="seg-btn" data-v="cloudy" onclick="mySel('weather',this)">多云</button>
+    </div>
+    <button id="btn-random" onclick="myRandom()">🎲 随机</button>
+  </div>
+</div>
+
+<!-- 西湖白噪音：水波声 -->
+<audio id="bg-audio" loop preload="none" src="https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a73467.mp3"></audio>
+
+<script>
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 0. 情感维度定义                                                  ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+const EMOTIONS = {
+  tranquil: { name: "静谧", desc: "心如止水", color: "#a8c8d8" },
+  longing: { name: "怀远", desc: "思绪悠远", color: "#d4a5a5" },
+  serene: { name: "悠然", desc: "闲适自在", color: "#b8d4b8" },
+  melancholy: { name: "淡淡愁", desc: "若有若无", color: "#9aa5b8" },
+  hopeful: { name: "期许", desc: "心怀盼望", color: "#e8d4a8" },
+  nostalgic: { name: "怀旧", desc: "时光倒流", color: "#c4b8a8" },
+  lonely: { name: "孤清", desc: "独处之美", color: "#a8b8c8" },
+  peaceful: { name: "安宁", desc: "岁月静好", color: "#b8c8b8" },
+  wistful: { name: "怅惘", desc: "欲说还休", color: "#b8a8b8" },
+  joyful: { name: "欣然", desc: "心生欢喜", color: "#d4c8a8" }
+};
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 1. 防重复机制 — sessionStorage + 主题/意象追踪                ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+function getHistory(key){
+  try{ return JSON.parse(sessionStorage.getItem("xihu_"+key)) || []; }catch(e){ return []; }
+}
+function pushHistory(key, id){
+  const h = getHistory(key);
+  h.push(id);
+  const max = Math.max(5, Math.floor(h.length * 0.75) + 3);
+  if(h.length > max) h.splice(0, h.length - max);
+  sessionStorage.setItem("xihu_"+key, JSON.stringify(h));
+}
+function getRecentThemes(n=3){
+  return getHistory("themes").slice(-n);
+}
+function pushTheme(theme){
+  pushHistory("themes", theme);
+}
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 2. 西湖背景图片库（用户本地图片 + 网络备选）                  ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+const BG_IMAGES = [
+  // 本地用户提供的西湖图（按季节-时段-天气命名）
+  {url:"images/xihu-spring-sunny-dusk.jpg", tags:["spring","sunny","dusk","sunset"], desc:"西湖春暮", credit:"实景拍摄", local:true},
+  {url:"images/xihu-spring-sunny-day.jpg",  tags:["spring","sunny","day"],        desc:"西湖春日", credit:"实景拍摄", local:true},
+  {url:"images/xihu-spring-cloudy-dawn.jpg",tags:["spring","cloudy","dawn","sunrise"], desc:"西湖春晨", credit:"实景拍摄", local:true},
+  {url:"images/xihu-autumn-cloudy-dawn.jpg",tags:["autumn","cloudy","dawn","sunrise"], desc:"西湖秋晨", credit:"实景拍摄", local:true},
+  // 通用本地兜底
+  {url:"images/xihu-dawn.jpg",  tags:["dawn","sunrise","spring","summer","autumn","winter","sunny","cloudy","fog"], desc:"西湖晨景", credit:"实景拍摄", local:true},
+  {url:"images/xihu-dusk.jpg",  tags:["dusk","sunset","spring","summer","autumn","winter","sunny","cloudy"],     desc:"西湖暮景", credit:"实景拍摄", local:true},
+  // 网络图片
+  {url:"https://images.unsplash.com/photo-1472396961693-142e6e269027?w=1920&q=85", tags:["spring","sunny","day"],   desc:"苏堤春晓·春日艳阳", credit:"Unsplash"},
+  {url:"https://images.unsplash.com/photo-1541232741-74f255d0ec7e?w=1920&q=85", tags:["spring","rain","autumn","rain"], desc:"细雨西湖·烟雨朦胧", credit:"Unsplash"},
+  {url:"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=85", tags:["summer","sunny","day"],   desc:"曲院风荷·接天莲叶", credit:"Unsplash"},
+  {url:"https://images.unsplash.com/photo-1501854140801-50d01698950b?w=1920&q=85", tags:["autumn","sunny","day"],   desc:"秋高气爽·平湖秋月", credit:"Unsplash"},
+  {url:"https://images.unsplash.com/photo-1491555103944-7c647fd857e6?w=1920&q=85", tags:["winter","snow"],          desc:"断桥残雪·素裹银装", credit:"Unsplash"},
+  {url:"https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=1920&q=85", tags:["fog","cloudy"],           desc:"西湖烟雨·雾气弥漫", credit:"Unsplash"},
+  {url:"https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=1920&q=85", tags:["night"],                 desc:"西湖夜色·灯火阑珊", credit:"Unsplash"},
+  {url:"https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=1920&q=85", tags:["dawn","sunrise"],        desc:"晨曦破晓·旭日东升", credit:"Unsplash"},
+  {url:"https://images.unsplash.com/photo-1518623489648-a173ef7824f3?w=1920&q=85", tags:["dusk","sunset"],         desc:"雷峰夕照·残阳如血", credit:"Unsplash"},
+  {url:"https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=1920&q=85", tags:["any"],                    desc:"西湖全景·山水相映", credit:"Unsplash"},
+];
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 3. 名人诗词库（绝句，带唯一 id、主题标签、情感、元素）         ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+const CLASSIC = [
+  // ── 春 ──
+  {id:"c01",s:"spring",p:"dawn",w:"sunny", text:"乱花渐欲迷人眼\n浅草才能没马蹄", author:"白居易",dynasty:"唐",theme:"春花浅草",emotion:"joyful",elements:["乱花","浅草","马蹄"]},
+  {id:"c02",s:"spring",p:"day", w:"sunny", text:"最爱湖东行不足\n绿杨阴里白沙堤", author:"白居易",dynasty:"唐",theme:"绿杨白沙",emotion:"serene",elements:["绿杨","白沙堤","湖东"]},
+  {id:"c03",s:"spring",p:"dusk",w:"sunny", text:"孤山寺北贾亭西\n水面初平云脚低", author:"白居易",dynasty:"唐",theme:"孤山云水",emotion:"tranquil",elements:["孤山","云脚","水面"]},
+  {id:"c04",s:"spring",p:"day", w:"rain",  text:"水光潋滟晴方好\n山色空濛雨亦奇", author:"苏轼",dynasty:"宋",theme:"晴雨双绝",emotion:"peaceful",elements:["水光","山色","烟雨"]},
+  {id:"c05",s:"spring",p:"night",w:"rain", text:"小楼一夜听春雨\n深巷明朝卖杏花", author:"陆游",dynasty:"宋",theme:"春雨杏花",emotion:"wistful",elements:["春雨","杏花","小楼"]},
+  {id:"c06",s:"spring",p:"night",w:"sunny", text:"春色满园关不住\n一枝红杏出墙来", author:"叶绍翁",dynasty:"宋",theme:"红杏出墙",emotion:"hopeful",elements:["红杏","春色","墙头"]},
+  {id:"c07",s:"spring",p:"dawn",w:"fog",   text:"烟笼寒水月笼沙\n夜泊秦淮近酒家", author:"杜牧",dynasty:"唐",theme:"烟笼寒水",emotion:"melancholy",elements:["烟","寒水","月"]},
+  {id:"c08",s:"spring",p:"dusk",w:"rain",  text:"沾衣欲湿杏花雨\n吹面不寒杨柳风", author:"志南",dynasty:"宋",theme:"杏雨杨柳",emotion:"joyful",elements:["杏花雨","杨柳风","春风"]},
+  // ── 夏 ──
+  {id:"c09",s:"summer",p:"day", w:"rain",  text:"黑云翻墨未遮山\n白雨跳珠乱入船", author:"苏轼",dynasty:"宋",theme:"暴雨跳珠",emotion:"tranquil",elements:["黑云","白雨","跳珠"]},
+  {id:"c10",s:"summer",p:"day", w:"sunny", text:"接天莲叶无穷碧\n映日荷花别样红", author:"杨万里",dynasty:"宋",theme:"莲叶荷花",emotion:"joyful",elements:["莲叶","荷花","映日"]},
+  {id:"c11",s:"summer",p:"night",w:"sunny",text:"明月别枝惊鹊\n清风半夜鸣蝉",   author:"辛弃疾",dynasty:"宋",theme:"明月鸣蝉",emotion:"serene",elements:["明月","惊鹊","鸣蝉"]},
+  {id:"c12",s:"summer",p:"dawn",w:"sunny", text:"荷风送香气\n竹露滴清响",       author:"孟浩然",dynasty:"唐",theme:"荷风竹露",emotion:"peaceful",elements:["荷风","竹露","清香"]},
+  {id:"c13",s:"summer",p:"night",w:"rain", text:"七八个星天外\n两三点雨山前",   author:"辛弃疾",dynasty:"宋",theme:"星雨山前",emotion:"wistful",elements:["星","雨","山前"]},
+  {id:"c14",s:"summer",p:"dusk",w:"sunny", text:"毕竟六月中\n风光不与四时同", author:"杨万里",dynasty:"宋",theme:"六月风光",emotion:"hopeful",elements:["六月","莲叶","荷花"]},
+  // ── 秋 ──
+  {id:"c15",s:"autumn",p:"day", w:"sunny", text:"停车坐爱枫林晚\n霜叶红于二月花", author:"杜牧",dynasty:"唐",theme:"霜叶红枫",emotion:"joyful",elements:["枫林","霜叶","红"]},
+  {id:"c16",s:"autumn",p:"night",w:"sunny",text:"举头望明月\n低头思故乡",       author:"李白",dynasty:"唐",theme:"明月思乡",emotion:"longing",elements:["明月","故乡","思念"]},
+  {id:"c17",s:"autumn",p:"dawn",w:"fog",   text:"湖光秋月两相和\n潭面无风镜未磨", author:"刘禹锡",dynasty:"唐",theme:"湖光秋月",emotion:"tranquil",elements:["湖光","秋月","潭面"]},
+  {id:"c18",s:"autumn",p:"dusk",w:"sunny", text:"夕阳西下\n断肠人在天涯",       author:"马致远",dynasty:"元",theme:"夕阳天涯",emotion:"melancholy",elements:["夕阳","天涯","断肠"]},
+  {id:"c19",s:"autumn",p:"day", w:"rain",  text:"自古逢秋悲寂寥\n我言秋日胜春朝", author:"刘禹锡",dynasty:"唐",theme:"秋日胜春",emotion:"hopeful",elements:["秋日","春朝","胜"]},
+  {id:"c20",s:"autumn",p:"night",w:"rain", text:"秋雨秋风愁煞人\n寒宵独坐心如捣", author:"陶澹人",dynasty:"清",theme:"秋风愁人",emotion:"lonely",elements:["秋雨","秋风","寒宵"]},
+  // ── 冬 ──
+  {id:"c21",s:"winter",p:"dawn",w:"snow",  text:"晨起开门雪满山\n雪晴云淡日光寒", author:"郑燮",dynasty:"清",theme:"雪满寒山",emotion:"peaceful",elements:["雪","山","日光"]},
+  {id:"c22",s:"winter",p:"night",w:"snow",  text:"忽如一夜春风来\n千树万树梨花开", author:"岑参",dynasty:"唐",theme:"梨花飞雪",emotion:"wonder",elements:["春风","梨花","雪"]},
+  {id:"c23",s:"winter",p:"day", w:"sunny", text:"千山鸟飞绝\n万径人踪灭",       author:"柳宗元",dynasty:"唐",theme:"千山鸟绝",emotion:"lonely",elements:["千山","鸟","万径"]},
+  {id:"c24",s:"winter",p:"dusk",w:"snow",  text:"柴门闻犬吠\n风雪夜归人",       author:"刘长卿",dynasty:"唐",theme:"风雪归人",emotion:"nostalgic",elements:["柴门","犬吠","风雪"]},
+  {id:"c25",s:"winter",p:"night",w:"fog",   text:"日暮苍山远\n天寒白屋贫",       author:"刘长卿",dynasty:"唐",theme:"苍山白屋",emotion:"melancholy",elements:["苍山","白屋","日暮"]},
+  {id:"c26",s:"winter",p:"day", w:"snow",  text:"墙角数枝梅\n凌寒独自开",       author:"王安石",dynasty:"宋",theme:"寒梅凌雪",emotion:"hopeful",elements:["梅","凌寒","墙角"]},
+  // ── 通用兜底 ──
+  {id:"c27",s:"any",p:"any",w:"any", text:"欲把此间比西子\n淡妆浓抹总相宜",     author:"苏轼",dynasty:"宋",theme:"西子比景",emotion:"joyful",elements:["西子","淡妆","浓抹"]},
+  {id:"c28",s:"any",p:"any",w:"any", text:"山外青山楼外楼\n歌舞几时休",     author:"林升",dynasty:"宋",theme:"青山楼外",emotion:"wistful",elements:["青山","楼","歌舞"]},
+];
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 4. AI 生成诗词库（带情感维度、意境元素，大幅降低"西湖"出现）   ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+const AI_TPL = {
+  // ════════════════════════════════════════════════════════════════
+  // ──── 春 ────
+  "spring-dawn-sunny": [
+    {text:"晓日三潭浮碎影\n苏堤新柳拂长空\n一篙春水连天碧\n几处黄莺啭晓风", theme:"三潭柳风",emotion:"tranquil",elements:["三潭","新柳","黄莺","春水"]},
+    {text:"晨光乍破映孤山\n白鹤梳翎水雾间\n露重桃花红欲滴\n扁舟一叶过前湾", theme:"白鹤桃花",emotion:"peaceful",elements:["孤山","白鹤","桃花","扁舟"]},
+    {text:"春晓薄雾开\n断桥残雪渐消融\n梅花落尽桃枝发\n燕子归来柳色中", theme:"春晓燕归",emotion:"hopeful",elements:["薄雾","断桥","梅花","燕子"]},
+    {text:"晓风拂面柳丝轻\n湖面波光映日明\n几处早莺争暖树\n谁家新燕啄春泥", theme:"早莺新燕",emotion:"joyful",elements:["柳丝","波光","早莺","新燕"]},
+    {text:"晨露未晞柳带烟\n一篙撑破镜中天\n渔歌隔水听何处\n白鹭惊飞芦岸边", theme:"晨露渔歌",emotion:"serene",elements:["晨露","柳烟","渔歌","白鹭"]},
+  ],
+  "spring-day-sunny": [
+    {text:"暖日波影长\n长堤十里杏花香\n游人策马过桥去\n惊起鸳鸯逐浪忙", theme:"杏花鸳鸯",emotion:"joyful",elements:["波影","杏花","长堤","鸳鸯"]},
+    {text:"湖上春风吹客衣\n断桥遥望柳依依\n碧波深处歌声起\n一叶扁舟载落晖", theme:"断桥扁舟",emotion:"wistful",elements:["春风","断桥","碧波","扁舟"]},
+    {text:"春日水似天\n桃花两岸映红鲜\n画船载酒游人醉\n柳外莺啼破晓烟", theme:"桃花画船",emotion:"serene",elements:["桃花","画船","柳","莺啼"]},
+    {text:"苏堤春晓柳如烟\n湖面波光映日圆\n白鹭飞来停复去\n游人如织笑声连", theme:"苏堤白鹭",emotion:"joyful",elements:["苏堤","柳烟","白鹭","波光"]},
+    {text:"春光明媚水云间\n十里长堤柳色鲜\n几处桃花红似火\n一双燕子舞蹁跹", theme:"春光燕舞",emotion:"hopeful",elements:["春光","长堤","桃花","燕子"]},
+    {text:"日暖风和燕子斜\n一湾碧水绕人家\n桥边桃李争春色\n不辨仙源在落花", theme:"燕子人家",emotion:"peaceful",elements:["燕子","碧水","桃李","落花"]},
+  ],
+  "spring-dusk-sunny": [
+    {text:"暮色雷峰塔影斜\n苏堤归鸟入云霞\n长桥一望春光尽\n独倚阑干看落花", theme:"雷峰落花",emotion:"melancholy",elements:["雷峰","塔影","归鸟","落花"]},
+    {text:"夕阳衔尽北高峰\n湖面金波万点红\n画舫归时歌韵远\n柳丝轻飏暮烟中", theme:"金波画舫",emotion:"wistful",elements:["夕阳","金波","画舫","暮烟"]},
+    {text:"春暮夕照迟\n断桥人散柳丝垂\n归鸦几点投林去\n独坐亭中看落晖", theme:"春暮归鸦",emotion:"lonely",elements:["夕照","断桥","归鸦","落晖"]},
+    {text:"晚照水似金\n三潭塔影入波深\n渔舟唱晚归帆远\n一曲清歌动客心", theme:"晚照渔舟",emotion:"nostalgic",elements:["晚照","三潭","渔舟","归帆"]},
+    {text:"落日熔金染碧空\n远山如黛近山红\n归舟一叶横波去\n独倚危栏听晚钟", theme:"落日归舟",emotion:"peaceful",elements:["落日","远山","归舟","晚钟"]},
+  ],
+  "spring-night-sunny": [
+    {text:"月映三潭印不圆\n湖心亭外晚风前\n柳阴深处谁家笛\n吹落春花入水眠", theme:"三潭月笛",emotion:"wistful",elements:["月","三潭","笛声","春花"]},
+    {text:"夜静水似天\n断桥灯火映波寒\n蛙声一片随舟去\n春梦依稀到枕边", theme:"断桥蛙声",emotion:"tranquil",elements:["夜静","灯火","蛙声","春梦"]},
+    {text:"春夜月正明\n孤山塔影入波清\n谁家玉笛吹杨柳\n惊起沙鸥梦不成", theme:"春夜玉笛",emotion:"longing",elements:["春夜","月","塔影","玉笛"]},
+    {text:"夜色万籁沉\n一轮明月照波心\n微风过处荷香送\n独坐桥头听水音", theme:"夜月荷香",emotion:"serene",elements:["夜色","明月","荷香","水音"]},
+    {text:"清辉万里洒平波\n塔影亭亭映碧萝\n何处箫声随月落\n一窗幽梦到南柯", theme:"清辉塔影",emotion:"nostalgic",elements:["清辉","塔影","箫声","幽梦"]},
+  ],
+  "spring-dawn-rain": [
+    {text:"晓雨如丝湿画檐\n春水碧于蓝\n落花铺尽长堤路\n一叶扁舟过远山", theme:"晓雨落花",emotion:"melancholy",elements:["晓雨","落花","扁舟","春水"]},
+    {text:"晨来细雨过孤山\n荷叶珍珠颗颗圆\n水阔桥低烟树暗\n莺啼声里柳含烟", theme:"孤山晨雨",emotion:"peaceful",elements:["细雨","孤山","荷叶","莺啼"]},
+    {text:"春雨霏霏晓色寒\n水阔柳丝残\n断桥人迹无寻处\n唯有渔翁独钓竿", theme:"春雨渔翁",emotion:"lonely",elements:["春雨","晓色","断桥","渔翁"]},
+    {text:"晓雨敲窗春梦醒\n水色暗沉沉\n桃花落尽无人管\n独倚阑干听鸟音", theme:"晓雨鸟音",emotion:"wistful",elements:["晓雨","春梦","桃花","鸟音"]},
+  ],
+  "spring-day-rain": [
+    {text:"烟雨画不如\n断桥烟柳碧模糊\n游人半避垂杨下\n听取黄鹂隔岸呼", theme:"烟雨画桥",emotion:"serene",elements:["烟雨","断桥","烟柳","黄鹂"]},
+    {text:"春来湖上雨纷纷\n雷峰塔影入波云\n伞底桃花红胜火\n青苔铺满石阶痕", theme:"伞底桃花",emotion:"joyful",elements:["春雨","雷峰","桃花","青苔"]},
+    {text:"细雨如丝湿客衣\n春色雨中稀\n断桥人迹稀疏处\n独见渔舟泊柳矶", theme:"细雨渔舟",emotion:"lonely",elements:["细雨","客衣","断桥","渔舟"]},
+    {text:"春雨潇潇打画船\n湖光山色两茫然\n游人尽入茶楼避\n独倚阑干看水烟", theme:"春雨茶楼",emotion:"tranquil",elements:["春雨","画船","茶楼","水烟"]},
+  ],
+  "spring-dusk-rain": [
+    {text:"暮雨潇潇打画船\n灯火雨中寒\n归人踏尽长桥路\n柳絮飞时水色宽", theme:"暮雨画船",emotion:"nostalgic",elements:["暮雨","灯火","长桥","柳絮"]},
+    {text:"黄昏雨急过苏堤\n湖面波纹似画齐\n隔岸钟声随风远\n一城灯火入长迷", theme:"暮钟苏堤",emotion:"wistful",elements:["黄昏","苏堤","钟声","灯火"]},
+    {text:"春暮雨来天色昏\n水阔柳烟深\n归鸦万点投林去\n独坐孤亭听梵音", theme:"春暮梵音",emotion:"peaceful",elements:["春暮","柳烟","归鸦","梵音"]},
+    {text:"晚雨敲窗春梦残\n灯火半阑珊\n行人归去无踪迹\n唯有钟声隔水寒", theme:"晚雨钟声",emotion:"lonely",elements:["晚雨","灯火","钟声","水寒"]},
+  ],
+  "spring-night-rain": [
+    {text:"春夜湖心听雨眠\n梦回三潭柳如烟\n推窗只见波光碎\n灯影随舟过断桥", theme:"湖心听雨",emotion:"tranquil",elements:["春夜","雨","三潭","灯影"]},
+    {text:"夜雨敲窗到五更\n水涨柳低横\n蛙声一片连天远\n唯有渔灯照水明", theme:"夜雨渔灯",emotion:"serene",elements:["夜雨","蛙声","渔灯","水明"]},
+    {text:"春雨夜深人未眠\n水响打船弦\n孤山塔影朦胧处\n一点灯光似去年", theme:"春雨孤灯",emotion:"nostalgic",elements:["春雨","孤山","塔影","孤灯"]},
+    {text:"夜雨潇潇春梦迟\n水阔柳丝垂\n谁家玉笛吹杨柳\n惊起沙鸥立浅池", theme:"夜雨玉笛",emotion:"wistful",elements:["夜雨","柳丝","玉笛","沙鸥"]},
+  ],
+  "spring-dawn-fog": [
+    {text:"晨雾重重锁断桥\n不见水平高\n只闻桨橹声声近\n一盏孤灯出柳条", theme:"晨雾断桥",emotion:"mysterious",elements:["晨雾","断桥","桨橹","孤灯"]},
+    {text:"晓雾轻笼白堤头\n孤山隐约水悠悠\n三潭塔影空相望\n唯有黄鹂啭不休", theme:"雾笼白堤",emotion:"peaceful",elements:["晓雾","白堤","孤山","黄鹂"]},
+    {text:"春晓浓雾隐孤山\n水阔柳烟寒\n断桥人迹无寻处\n唯有渔翁独钓竿", theme:"春晓渔翁",emotion:"lonely",elements:["春晓","浓雾","孤山","渔翁"]},
+    {text:"晓雾如纱罩柳丝\n春色半迷离\n几声莺语穿云出\n惊起沙鸥立浅池", theme:"晓雾莺语",emotion:"serene",elements:["晓雾","柳丝","莺语","沙鸥"]},
+  ],
+  "spring-day-fog": [
+    {text:"雾锁画不如\n亭台楼阁半模糊\n游船过处波纹起\n两岸桃花红尚孤", theme:"雾锁桃花",emotion:"wistful",elements:["雾","亭台","游船","桃花"]},
+    {text:"半日烟波半日晴\n春色雾中明\n行人衣上沾花气\n不觉长堤步已轻", theme:"烟波花气",emotion:"joyful",elements:["烟波","春色","花气","长堤"]},
+    {text:"春雾空蒙柳色深\n水阔鸟声沉\n断桥隐约烟波里\n独见渔舟泊柳阴", theme:"春雾渔舟",emotion:"tranquil",elements:["春雾","柳色","断桥","渔舟"]},
+    {text:"雾重景色殊\n孤山塔影入虚无\n游人尽入云深处\n独倚阑干看水图", theme:"雾重水图",emotion:"mysterious",elements:["雾","孤山","塔影","云深"]},
+  ],
+  "spring-dusk-fog": [
+    {text:"暮霭沉沉压断桥\n灯火渐萧萧\n烟笼苏堤人归去\n唯有钟声隔水飘", theme:"暮霭钟声",emotion:"nostalgic",elements:["暮霭","断桥","苏堤","钟声"]},
+    {text:"黄昏雾起白堤头\n塔影迷茫水色秋\n一叶归舟何处去\n远山渐没晚烟浮", theme:"黄昏归舟",emotion:"wistful",elements:["黄昏","雾","塔影","归舟"]},
+    {text:"春暮烟笼柳色深\n水阔暮云沉\n归鸦几点投林去\n独坐孤亭听梵音", theme:"春暮烟笼",emotion:"peaceful",elements:["春暮","烟笼","归鸦","梵音"]},
+    {text:"晚雾如纱罩柳丝\n灯火半迷离\n几声钟磬随风远\n独倚阑干看水时", theme:"晚雾钟磬",emotion:"serene",elements:["晚雾","柳丝","钟磬","灯火"]},
+  ],
+  "spring-night-fog": [
+    {text:"春夜浓雾锁\n月隐灯微影不孤\n远处三潭钟一响\n隔水犹闻叫鹧鸪", theme:"雾夜三潭",emotion:"lonely",elements:["春夜","浓雾","三潭","鹧鸪"]},
+    {text:"雾满夜色深\n断桥灯火半遮阴\n蛙声隐隐芦花动\n独倚阑干听水音", theme:"雾夜蛙声",emotion:"tranquil",elements:["雾","夜色","断桥","蛙声"]},
+    {text:"春夜雾重月无踪\n水阔柳烟浓\n谁家灯火明还灭\n独坐桥头听远钟", theme:"春夜远钟",emotion:"nostalgic",elements:["春夜","雾","灯火","远钟"]},
+    {text:"夜雾如纱罩柳丝\n灯火半迷离\n几声虫语穿云出\n惊起沙鸥立浅池", theme:"夜雾虫语",emotion:"peaceful",elements:["夜雾","柳丝","虫语","沙鸥"]},
+  ],
+  "spring-day-cloudy": [
+    {text:"半晴半阴春日好\n波细柳风柔\n白云一朵飞来处\n倒影入湖映小舟", theme:"白云小舟",emotion:"serene",elements:["春日","白云","倒影","小舟"]},
+    {text:"春云片片过孤山\n湖面光阴暗又明\n不辨游鱼何处去\n柳阴深处听潺湲", theme:"春云孤山",emotion:"tranquil",elements:["春云","孤山","游鱼","潺湲"]},
+    {text:"春日多云柳色新\n水阔鸟声频\n断桥人迹稀疏处\n独见渔翁独钓春", theme:"春日渔翁",emotion:"lonely",elements:["春日","柳色","断桥","渔翁"]},
+    {text:"云开云合柳丝长\n春半暖还凉\n几处桃花红似火\n一双燕子绕雕梁", theme:"云合燕绕",emotion:"joyful",elements:["云","柳丝","桃花","燕子"]},
+  ],
+  "spring-dusk-cloudy": [
+    {text:"暮云低合压长堤\n湖面波光渐渐低\n画舫归来歌韵歇\n数声归雁入云迷", theme:"暮云归雁",emotion:"wistful",elements:["暮云","长堤","画舫","归雁"]},
+    {text:"云遮夕照暗\n暮色犹存一抹红\n苏堤人散舟横处\n唯有春涛拍岸空", theme:"云遮夕照",emotion:"melancholy",elements:["云","夕照","苏堤","春涛"]},
+    {text:"春暮云深柳色浓\n水阔暮烟重\n归鸦万点投林去\n独坐孤亭听晚钟", theme:"春暮晚钟",emotion:"peaceful",elements:["春暮","云","柳色","晚钟"]},
+    {text:"晚云如墨压湖心\n雷峰塔影半浮沉\n行人归去无踪迹\n唯有钟声出远林", theme:"晚云远林",emotion:"nostalgic",elements:["晚云","雷峰","塔影","钟声"]},
+  ],
+  "spring-night-cloudy": [
+    {text:"云掩春月暗\n灯火千家映水寒\n夜深不闻箫管响\n唯有蛙声到枕边", theme:"云掩春月",emotion:"tranquil",elements:["云","春月","灯火","蛙声"]},
+    {text:"层云不散夜苍茫\n湖面风来柳丝长\n独坐亭前星影淡\n一壶清茶对波光", theme:"层云清茶",emotion:"serene",elements:["层云","夜色","柳丝","清茶"]},
+    {text:"春夜云深月无踪\n水阔柳烟浓\n谁家灯火明还灭\n独坐桥头听远钟", theme:"春夜云深",emotion:"lonely",elements:["春夜","云","灯火","远钟"]},
+    {text:"夜云如墨罩\n灯火稀疏人迹无\n独倚阑干听水响\n几声蛙鼓破寒芦", theme:"夜云蛙鼓",emotion:"peaceful",elements:["夜云","灯火","水响","蛙鼓"]},
+  ],
+
+  // ════════════════════════════════════════════════════════════════
+  // ──── 夏 ────
+  "summer-dawn-sunny": [
+    {text:"晓日初升映断桥\n十里碧波摇\n荷风送露清香远\n白鹭一行过远霄", theme:"晓日白鹭",emotion:"joyful",elements:["晓日","碧波","荷风","白鹭"]},
+    {text:"清晨湖上露华浓\n曲院荷开映日红\n碧叶田田珠露滚\n一声蝉唱报清风", theme:"曲院露珠",emotion:"peaceful",elements:["清晨","荷","露珠","蝉"]},
+    {text:"夏晓暑气微\n断桥柳色映朝晖\n荷花带露红初透\n几处蜻蜓点水飞", theme:"夏晓蜻蜓",emotion:"serene",elements:["夏晓","断桥","荷花","蜻蜓"]},
+    {text:"晓风拂面柳丝轻\n湖面波光映日明\n几处早蝉争暖树\n谁家新燕啄荷茎", theme:"早蝉新燕",emotion:"tranquil",elements:["晓风","柳丝","早蝉","新燕"]},
+  ],
+  "summer-day-sunny": [
+    {text:"烈日当空暑气蒸\n十里碧波凝\n曲院荷花红胜火\n清风不度断桥冰", theme:"烈日荷花",emotion:"tranquil",elements:["烈日","碧波","荷花","清风"]},
+    {text:"六月水如天\n满湖荷叶碧相连\n蜻蜓立处微澜起\n一尾红鱼跃眼前", theme:"蜻蜓红鱼",emotion:"joyful",elements:["六月","荷叶","蜻蜓","红鱼"]},
+    {text:"夏日暑气浓\n荷花两岸映日红\n画船载酒游人醉\n柳外蝉鸣破午风", theme:"夏日蝉鸣",emotion:"serene",elements:["夏日","荷花","画船","蝉鸣"]},
+    {text:"苏堤夏晓柳如烟\n湖面波光映日圆\n白鹭飞来停复去\n游人如织笑声连", theme:"苏堤夏晓",emotion:"joyful",elements:["苏堤","柳烟","白鹭","波光"]},
+    {text:"夏光明媚水云间\n十里长堤柳色鲜\n几处荷花红似火\n一双蜻蜓舞蹁跹", theme:"夏光蜓舞",emotion:"hopeful",elements:["夏光","长堤","荷花","蜻蜓"]},
+  ],
+  "summer-dusk-sunny": [
+    {text:"晚霞如火映\n雷峰塔影落金炉\n渔舟唱晚归帆远\n一缕荷风到客途", theme:"晚霞雷峰",emotion:"nostalgic",elements:["晚霞","雷峰","渔舟","荷风"]},
+    {text:"暮色西来碧柳垂\n夕照夕阳迟\n蝉声渐远荷犹艳\n一盏灯火过桥时", theme:"暮色垂柳",emotion:"peaceful",elements:["暮色","柳","夕阳","灯火"]},
+    {text:"夏暮夕照迟\n断桥人散柳丝垂\n归鸦几点投林去\n独坐亭中看落晖", theme:"夏暮归鸦",emotion:"lonely",elements:["夏暮","夕照","断桥","归鸦"]},
+    {text:"晚照水似金\n三潭塔影入波深\n渔舟唱晚归帆远\n一曲清歌动客心", theme:"夏晚渔舟",emotion:"wistful",elements:["晚照","三潭","渔舟","清歌"]},
+  ],
+  "summer-night-sunny": [
+    {text:"夏夜月似银\n三潭印水碧无痕\n清风一阵荷香送\n蝉韵高低伴客眠", theme:"三潭夏月",emotion:"tranquil",elements:["夏夜","月","三潭","荷香"]},
+    {text:"夜静湖心暑气消\n荷花影里听蛙跳\n蟾光似水波心碎\n一叶归舟过断桥", theme:"夜静蛙声",emotion:"serene",elements:["夜静","荷花","蛙跳","归舟"]},
+    {text:"夏夜月正明\n孤山塔影入波清\n谁家玉笛吹杨柳\n惊起沙鸥梦不成", theme:"夏夜玉笛",emotion:"longing",elements:["夏夜","月","孤山","玉笛"]},
+    {text:"夜色万籁沉\n一轮明月照波心\n微风过处荷香送\n独坐桥头听水音", theme:"夏夜荷香",emotion:"peaceful",elements:["夜色","明月","荷香","水音"]},
+  ],
+  "summer-dawn-rain": [
+    {text:"夏晓雷声到枕边\n急雨敲窗打画檐\n荷叶翻翻珠玉碎\n一梦入云烟", theme:"夏晓急雨",emotion:"tranquil",elements:["夏晓","雷声","急雨","荷叶"]},
+    {text:"晨来骤雨过孤山\n湖面波纹似画斑\n新荷承露千珠碎\n燕子低飞水雾间", theme:"骤雨新荷",emotion:"peaceful",elements:["骤雨","孤山","新荷","燕子"]},
+    {text:"夏雨霏霏晓色寒\n水阔柳丝残\n断桥人迹无寻处\n唯有渔翁独钓竿", theme:"夏雨渔翁",emotion:"lonely",elements:["夏雨","晓色","断桥","渔翁"]},
+    {text:"晓雨敲窗夏梦醒\n水色暗沉沉\n荷花落尽无人管\n独倚阑干听鸟音", theme:"晓雨鸟音",emotion:"wistful",elements:["晓雨","夏梦","荷花","鸟音"]},
+  ],
+  "summer-day-rain": [
+    {text:"暴雨倾盆过断桥\n水涨没柳条\n白雨跳珠连碧叶\n一声惊雷入九霄", theme:"暴雨断桥",emotion:"powerful",elements:["暴雨","断桥","跳珠","惊雷"]},
+    {text:"夏日雷声催骤雨\n浪急白鸥飞\n荷盘翻尽珍珠落\n天际彩虹垂翠微", theme:"雷雨彩虹",emotion:"hopeful",elements:["夏日","骤雨","珍珠","彩虹"]},
+    {text:"夏雨如丝湿客衣\n夏色雨中稀\n断桥人迹稀疏处\n独见渔舟泊柳矶", theme:"夏雨渔舟",emotion:"lonely",elements:["夏雨","客衣","断桥","渔舟"]},
+    {text:"暴雨潇潇打画船\n湖光山色两茫然\n游人尽入茶楼避\n独倚阑干看水烟", theme:"暴雨茶楼",emotion:"tranquil",elements:["暴雨","画船","茶楼","水烟"]},
+  ],
+  "summer-dusk-rain": [
+    {text:"黄昏暴雨压\n电闪雷鸣路欲无\n归船急渡波涛里\n岸上行人各奔途", theme:"黄昏暴风雨",emotion:"dramatic",elements:["黄昏","暴雨","电闪","归船"]},
+    {text:"夏暮雷声来势狂\n雨打旧荷塘\n行人避入长桥洞\n远塔朦胧水色黄", theme:"暮雷旧荷",emotion:"wistful",elements:["夏暮","雷声","荷塘","远塔"]},
+    {text:"夏暮雨来天色昏\n水阔柳烟深\n归鸦万点投林去\n独坐孤亭听梵音", theme:"夏暮梵音",emotion:"peaceful",elements:["夏暮","柳烟","归鸦","梵音"]},
+    {text:"晚雨敲窗夏梦残\n灯火半阑珊\n行人归去无踪迹\n唯有钟声隔水寒", theme:"晚雨钟声",emotion:"lonely",elements:["晚雨","灯火","钟声","水寒"]},
+  ],
+  "summer-night-rain": [
+    {text:"夏夜倾盆雨打窗\n水涨过堤防\n蛙鸣一片连天响\n灯火明灭在水乡", theme:"夜雨蛙鸣",emotion:"tranquil",elements:["夏夜","雨","蛙鸣","灯火"]},
+    {text:"雷声隐隐入夜深\n雨打荷叶碎玉音\n断桥灯火风吹灭\n独坐亭中听水吟", theme:"雷夜听水",emotion:"serene",elements:["雷声","夜雨","荷叶","水吟"]},
+    {text:"夏雨夜深人未眠\n水响打船弦\n孤山塔影朦胧处\n一点灯光似去年", theme:"夏雨孤灯",emotion:"nostalgic",elements:["夏雨","孤山","塔影","孤灯"]},
+    {text:"夜雨潇潇夏梦迟\n水阔柳丝垂\n谁家玉笛吹杨柳\n惊起沙鸥立浅池", theme:"夜雨玉笛",emotion:"wistful",elements:["夜雨","柳丝","玉笛","沙鸥"]},
+  ],
+  "summer-dawn-fog": [
+    {text:"晓雾如纱笼碧波\n夏晓好烟萝\n荷花半隐轻舟过\n一缕清香渡薜萝", theme:"晓雾荷花",emotion:"mysterious",elements:["晓雾","碧波","荷花","轻舟"]},
+    {text:"夏晨浓雾满\n柳暗花明路不孤\n荷叶田田珠露重\n一声长啸出菰蒲", theme:"夏晨浓雾",emotion:"peaceful",elements:["夏晨","浓雾","荷叶","菰蒲"]},
+    {text:"夏晓浓雾隐孤山\n水阔柳烟寒\n断桥人迹无寻处\n唯有渔翁独钓竿", theme:"夏晓渔翁",emotion:"lonely",elements:["夏晓","浓雾","孤山","渔翁"]},
+    {text:"晓雾如纱罩柳丝\n夏色半迷离\n几声莺语穿云出\n惊起沙鸥立浅池", theme:"晓雾莺语",emotion:"serene",elements:["晓雾","柳丝","莺语","沙鸥"]},
+  ],
+  "summer-day-fog": [
+    {text:"雾锁暑气收\n断桥烟柳似深秋\n荷花隐约红初透\n游舫悠然过碧流", theme:"雾锁荷花",emotion:"tranquil",elements:["雾","断桥","荷花","游舫"]},
+    {text:"夏日烟波不肯开\n如梦入苍苔\n孤山寺外钟声远\n隔水犹闻莲叶来", theme:"烟波莲叶",emotion:"wistful",elements:["夏日","烟波","孤山","莲叶"]},
+    {text:"夏雾空蒙柳色深\n水阔鸟声沉\n断桥隐约烟波里\n独见渔舟泊柳阴", theme:"夏雾渔舟",emotion:"peaceful",elements:["夏雾","柳色","断桥","渔舟"]},
+    {text:"雾重景色殊\n孤山塔影入虚无\n游人尽入云深处\n独倚阑干看水图", theme:"雾重水图",emotion:"mysterious",elements:["雾","孤山","塔影","云深"]},
+  ],
+  "summer-dusk-fog": [
+    {text:"夏暮烟波锁断桥\n湖心灯火渐萧条\n蝉声一季将归去\n唯有荷风过柳梢", theme:"暮烟荷风",emotion:"melancholy",elements:["夏暮","烟波","断桥","荷风"]},
+    {text:"晚雾从湖漫上来\n雷峰塔影半遮开\n归舟一叶迷方向\n唯有渔灯照水台", theme:"晚雾归舟",emotion:"wistful",elements:["晚雾","雷峰","归舟","渔灯"]},
+    {text:"夏暮烟笼柳色深\n水阔暮云沉\n归鸦万点投林去\n独坐孤亭听晚钟", theme:"夏暮烟笼",emotion:"peaceful",elements:["夏暮","烟笼","归鸦","晚钟"]},
+    {text:"晚雾如纱罩柳丝\n灯火半迷离\n几声钟磬随风远\n独倚阑干看水时", theme:"晚雾钟磬",emotion:"serene",elements:["晚雾","柳丝","钟磬","灯火"]},
+  ],
+  "summer-night-fog": [
+    {text:"夏夜浓雾锁\n月隐星沉水模糊\n蛙声不似平常响\n远处灯明似画图", theme:"雾夜灯明",emotion:"mysterious",elements:["夏夜","浓雾","蛙声","灯明"]},
+    {text:"雾重更深暑不消\n一片静悄悄\n荷塘隐隐香风送\n唯有蝉鸣透柳条", theme:"雾夜荷香",emotion:"tranquil",elements:["雾","荷塘","香风","蝉鸣"]},
+    {text:"夏夜雾重月无踪\n水阔柳烟浓\n谁家灯火明还灭\n独坐桥头听远钟", theme:"夏夜远钟",emotion:"lonely",elements:["夏夜","雾","灯火","远钟"]},
+    {text:"夜雾如纱罩柳丝\n灯火半迷离\n几声虫语穿云出\n惊起沙鸥立浅池", theme:"夜雾虫语",emotion:"peaceful",elements:["夜雾","柳丝","虫语","沙鸥"]},
+  ],
+  "summer-day-cloudy": [
+    {text:"云遮烈日暑微消\n碧水任逍遥\n荷花向日犹含笑\n一阵凉风过断桥", theme:"云遮荷花",emotion:"serene",elements:["云","烈日","荷花","凉风"]},
+    {text:"半阴半晴夏日长\n风送藕花香\n白鸥不避游人近\n自在浮波逐浪忙", theme:"白鸥藕花",emotion:"joyful",elements:["夏日","藕花","白鸥","浮波"]},
+    {text:"夏日多云柳色新\n水阔鸟声频\n断桥人迹稀疏处\n独见渔翁独钓夏", theme:"夏日渔翁",emotion:"lonely",elements:["夏日","柳色","断桥","渔翁"]},
+    {text:"云开云合柳丝长\n夏半暖还凉\n几处荷花红似火\n一双蜻蜓绕雕梁", theme:"云合蜓绕",emotion:"tranquil",elements:["云","柳丝","荷花","蜻蜓"]},
+  ],
+  "summer-dusk-cloudy": [
+    {text:"暮云低压断桥东\n湖面波光渐暗红\n暑气未消风已至\n归舟一叶入烟中", theme:"暮云归舟",emotion:"wistful",elements:["暮云","断桥","波光","归舟"]},
+    {text:"半阴夏暮水生凉\n十里柳丝长\n蝉声渐歇荷犹艳\n灯火渐明映夕阳", theme:"夏暮柳凉",emotion:"peaceful",elements:["夏暮","柳丝","荷","灯火"]},
+    {text:"夏暮云深柳色浓\n水阔暮烟重\n归鸦万点投林去\n独坐孤亭听晚钟", theme:"夏暮晚钟",emotion:"serene",elements:["夏暮","云","归鸦","晚钟"]},
+    {text:"晚云如墨压湖心\n雷峰塔影半浮沉\n行人归去无踪迹\n唯有钟声出远林", theme:"晚云远林",emotion:"nostalgic",elements:["晚云","雷峰","塔影","钟声"]},
+  ],
+  "summer-night-cloudy": [
+    {text:"云厚星稀夏夜深\n灯火映波心\n蝉声一去无人管\n唯有荷风过客襟", theme:"云厚荷风",emotion:"tranquil",elements:["云","夏夜","灯火","荷风"]},
+    {text:"层云不散夜如漆\n湖面风来暑气低\n独坐苏堤听蛙鼓\n一声柳浪过前溪", theme:"苏堤蛙鼓",emotion:"peaceful",elements:["层云","苏堤","蛙鼓","柳浪"]},
+    {text:"夏夜云深月无踪\n水阔柳烟浓\n谁家灯火明还灭\n独坐桥头听远钟", theme:"夏夜云深",emotion:"lonely",elements:["夏夜","云","灯火","远钟"]},
+    {text:"夜云如墨罩\n灯火稀疏人迹无\n独倚阑干听水响\n几声蛙鼓破寒芦", theme:"夜云蛙鼓",emotion:"serene",elements:["夜云","灯火","水响","蛙鼓"]},
+  ],
+
+  // ════════════════════════════════════════════════════════════════
+  // ──── 秋 ────
+  "autumn-dawn-sunny": [
+    {text:"秋晓霜满堤\n断桥落叶不胜栖\n一湾碧水映寒柳\n数只白鸥过远溪", theme:"秋霜白鸥",emotion:"melancholy",elements:["秋晓","霜","断桥","白鸥"]},
+    {text:"晨光冷照北高峰\n湖面秋云似淡浓\n桂子飘香人未起\n一叶扁舟入画中", theme:"桂子扁舟",emotion:"peaceful",elements:["晨光","秋云","桂子","扁舟"]},
+    {text:"秋晓薄雾开\n断桥残叶渐萧疏\n芦花飞尽荷枝老\n燕子南归雁字初", theme:"秋晓雁归",emotion:"wistful",elements:["秋晓","薄雾","芦花","雁字"]},
+    {text:"晓风拂面柳丝黄\n湖面波光映日凉\n几处寒蝉争晚树\n谁家新雁啄秋霜", theme:"寒蝉新雁",emotion:"nostalgic",elements:["晓风","柳丝","寒蝉","新雁"]},
+  ],
+  "autumn-day-sunny": [
+    {text:"秋高气爽水如天\n平湖秋月映残年\n枫叶两岸红胜火\n一壶清酒对长川", theme:"平湖红枫",emotion:"serene",elements:["秋日","平湖","枫叶","清酒"]},
+    {text:"金秋十月到\n芦白枫红景不孤\n白鹭一双飞水面\n波光碎影映苍芦", theme:"芦白枫红",emotion:"joyful",elements:["金秋","芦白","枫红","白鹭"]},
+    {text:"秋日水似天\n菊花两岸映黄鲜\n画船载酒游人醉\n柳外蝉鸣破晓烟", theme:"菊花画船",emotion:"serene",elements:["秋日","菊花","画船","蝉鸣"]},
+    {text:"苏堤秋晓柳如烟\n湖面波光映日圆\n白鹭飞来停复去\n游人如织笑声连", theme:"苏堤秋晓",emotion:"joyful",elements:["苏堤","柳烟","白鹭","波光"]},
+    {text:"秋光明媚水云间\n十里长堤柳色鲜\n几处枫叶红似火\n一双大雁舞蹁跹", theme:"秋光雁舞",emotion:"hopeful",elements:["秋光","长堤","枫叶","大雁"]},
+  ],
+  "autumn-dusk-sunny": [
+    {text:"夕阳似火映\n秋水长天共一图\n暮色渐深鸦雀散\n孤舟独立钓寒芦", theme:"夕阳钓寒",emotion:"lonely",elements:["夕阳","秋水","孤舟","寒芦"]},
+    {text:"秋暮霞光染断桥\n层林尽染火云烧\n归鸦一掠天边过\n湖上秋风客梦遥", theme:"秋暮归鸦",emotion:"wistful",elements:["秋暮","霞光","归鸦","秋风"]},
+    {text:"秋暮夕照迟\n断桥人散柳丝垂\n归雁几点投林去\n独坐亭中看落晖", theme:"秋暮归雁",emotion:"melancholy",elements:["秋暮","夕照","断桥","归雁"]},
+    {text:"晚照水似金\n三潭塔影入波深\n渔舟唱晚归帆远\n一曲清歌动客心", theme:"秋晚渔舟",emotion:"nostalgic",elements:["晚照","三潭","渔舟","清歌"]},
+  ],
+  "autumn-night-sunny": [
+    {text:"秋月一轮明似镜\n三潭印水夜空清\n桂花香里人何在\n唯有秋风过短亭", theme:"秋月桂花",emotion:"longing",elements:["秋月","三潭","桂花","秋风"]},
+    {text:"夜凉如水月华明\n湖面风来桂气盈\n独倚断桥秋色里\n一星渔火到天明", theme:"渔火秋色",emotion:"peaceful",elements:["夜凉","月华","断桥","渔火"]},
+    {text:"秋夜月正明\n孤山塔影入波清\n谁家玉笛吹杨柳\n惊起沙鸥梦不成", theme:"秋夜玉笛",emotion:"nostalgic",elements:["秋夜","月","孤山","玉笛"]},
+    {text:"夜色万籁沉\n一轮明月照波心\n微风过处桂香送\n独坐桥头听水音", theme:"秋夜桂香",emotion:"tranquil",elements:["夜色","明月","桂香","水音"]},
+  ],
+  "autumn-dawn-rain": [
+    {text:"秋晨冷雨过孤山\n落叶纷纷不忍看\n湖面涟漪千万点\n寒鸦一叫破烟鬟", theme:"秋晨冷雨",emotion:"melancholy",elements:["秋晨","冷雨","孤山","落叶"]},
+    {text:"晓雨敲窗秋意浓\n碧水映寒松\n断桥上望行人少\n唯有茶烟出寺钟", theme:"晓雨寒松",emotion:"peaceful",elements:["晓雨","秋意","寒松","茶烟"]},
+    {text:"秋雨霏霏晓色寒\n水阔柳丝残\n断桥人迹无寻处\n唯有渔翁独钓竿", theme:"秋雨渔翁",emotion:"lonely",elements:["秋雨","晓色","断桥","渔翁"]},
+    {text:"晓雨敲窗秋梦醒\n水色暗沉沉\n芦花落尽无人管\n独倚阑干听鸟音", theme:"晓雨鸟音",emotion:"wistful",elements:["晓雨","秋梦","芦花","鸟音"]},
+  ],
+  "autumn-day-rain": [
+    {text:"秋雨潇潇湿断桥\n红枫落尽入波消\n一色如烟墨\n独有残荷立远潮", theme:"秋雨残荷",emotion:"melancholy",elements:["秋雨","断桥","红枫","残荷"]},
+    {text:"寒雨打萍秋水阔\n风急雁南飞\n长堤柳色随烟尽\n一叶归舟载夕晖", theme:"寒雨归雁",emotion:"wistful",elements:["寒雨","秋水","长堤","归舟"]},
+    {text:"秋雨如丝湿客衣\n秋色雨中稀\n断桥人迹稀疏处\n独见渔舟泊柳矶", theme:"秋雨渔舟",emotion:"lonely",elements:["秋雨","客衣","断桥","渔舟"]},
+    {text:"秋雨潇潇打画船\n湖光山色两茫然\n游人尽入茶楼避\n独倚阑干看水烟", theme:"秋雨茶楼",emotion:"tranquil",elements:["秋雨","画船","茶楼","水烟"]},
+  ],
+  "autumn-dusk-rain": [
+    {text:"秋暮雨冷打残荷\n灯火暗随波\n行人归去无踪迹\n唯有钟声隔水和", theme:"暮雨残荷",emotion:"melancholy",elements:["秋暮","雨","残荷","灯火"]},
+    {text:"黄昏雨急过苏堤\n湖面波纹一望迷\n秋色萧条人影少\n孤山寺外柳丝低", theme:"黄昏苏堤",emotion:"wistful",elements:["黄昏","苏堤","秋色","孤山"]},
+    {text:"秋暮雨来天色昏\n水阔柳烟深\n归雁万点投林去\n独坐孤亭听梵音", theme:"秋暮梵音",emotion:"peaceful",elements:["秋暮","柳烟","归雁","梵音"]},
+    {text:"晚雨敲窗秋梦残\n灯火半阑珊\n行人归去无踪迹\n唯有钟声隔水寒", theme:"晚雨钟声",emotion:"lonely",elements:["晚雨","灯火","钟声","水寒"]},
+  ],
+  "autumn-night-rain": [
+    {text:"秋雨夜深打芭蕉\n灯火半萧条\n虫声凄切随风远\n一枕秋凉到天朝", theme:"秋雨芭蕉",emotion:"melancholy",elements:["秋雨","芭蕉","虫声","秋凉"]},
+    {text:"夜雨敲窗秋意深\n水涨没苔痕\n断桥无人风更急\n唯有残灯照水心", theme:"残灯水心",emotion:"lonely",elements:["夜雨","秋意","断桥","残灯"]},
+    {text:"秋雨夜深人未眠\n水响打船弦\n孤山塔影朦胧处\n一点灯光似去年", theme:"秋雨孤灯",emotion:"nostalgic",elements:["秋雨","孤山","塔影","孤灯"]},
+    {text:"夜雨潇潇秋梦迟\n水阔柳丝垂\n谁家玉笛吹杨柳\n惊起沙鸥立浅池", theme:"夜雨玉笛",emotion:"wistful",elements:["夜雨","柳丝","玉笛","沙鸥"]},
+  ],
+  "autumn-dawn-fog": [
+    {text:"秋晓浓雾隐孤山\n如画水云间\n远钟一声明方向\n白鹭低飞过浅湾", theme:"秋雾远钟",emotion:"mysterious",elements:["秋晓","浓雾","孤山","远钟"]},
+    {text:"晨雾如烟漫断桥\n湖光秋色半空寥\n芦花白处人不见\n一叶扁舟渡碧潮", theme:"芦花扁舟",emotion:"peaceful",elements:["晨雾","断桥","芦花","扁舟"]},
+    {text:"秋晓浓雾隐孤山\n水阔柳烟寒\n断桥人迹无寻处\n唯有渔翁独钓竿", theme:"秋晓渔翁",emotion:"lonely",elements:["秋晓","浓雾","孤山","渔翁"]},
+    {text:"晓雾如纱罩柳丝\n秋色半迷离\n几声雁语穿云出\n惊起沙鸥立浅池", theme:"晓雾雁语",emotion:"serene",elements:["晓雾","柳丝","雁语","沙鸥"]},
+  ],
+  "autumn-day-fog": [
+    {text:"秋雾空蒙锁碧波\n景色半消磨\n远山隐约如墨画\n近水芦花似雪梭", theme:"秋雾芦花",emotion:"wistful",elements:["秋雾","碧波","远山","芦花"]},
+    {text:"烟笼秋水雾笼天\n十景半遮颜\n平湖月隐孤山暗\n一叶舟横柳岸边", theme:"烟笼秋水",emotion:"mysterious",elements:["烟","秋水","平湖","孤山"]},
+    {text:"秋雾空蒙柳色深\n水阔鸟声沉\n断桥隐约烟波里\n独见渔舟泊柳阴", theme:"秋雾渔舟",emotion:"peaceful",elements:["秋雾","柳色","断桥","渔舟"]},
+    {text:"雾重景色殊\n孤山塔影入虚无\n游人尽入云深处\n独倚阑干看水图", theme:"雾重水图",emotion:"mysterious",elements:["雾","孤山","塔影","云深"]},
+  ],
+  "autumn-dusk-fog": [
+    {text:"秋暮雾起断桥西\n湖面烟波望不迷\n归雁一行穿雾去\n远山隐隐夕阳低", theme:"暮雾归雁",emotion:"wistful",elements:["秋暮","雾","断桥","归雁"]},
+    {text:"晚雾沉沉压柳堤\n秋色渐低迷\n灯明桥上人行少\n唯有蟾光照浅溪", theme:"晚雾柳堤",emotion:"melancholy",elements:["晚雾","柳堤","秋色","蟾光"]},
+    {text:"秋暮烟笼柳色深\n水阔暮云沉\n归雁万点投林去\n独坐孤亭听晚钟", theme:"秋暮烟笼",emotion:"peaceful",elements:["秋暮","烟笼","归雁","晚钟"]},
+    {text:"晚雾如纱罩柳丝\n灯火半迷离\n几声钟磬随风远\n独倚阑干看水时", theme:"晚雾钟磬",emotion:"serene",elements:["晚雾","柳丝","钟磬","灯火"]},
+  ],
+  "autumn-night-fog": [
+    {text:"秋夜雾浓不见天\n灯影半含烟\n虫声一片连秋草\n月隐星沉独未眠", theme:"雾夜虫声",emotion:"lonely",elements:["秋夜","雾","灯影","虫声"]},
+    {text:"夜雾如纱罩断桥\n秋声一叶落寒潮\n孤山寺远钟声淡\n唯有桂花香未消", theme:"雾夜桂花",emotion:"nostalgic",elements:["夜雾","断桥","钟声","桂花"]},
+    {text:"秋夜雾重月无踪\n水阔柳烟浓\n谁家灯火明还灭\n独坐桥头听远钟", theme:"秋夜远钟",emotion:"peaceful",elements:["秋夜","雾","灯火","远钟"]},
+    {text:"夜雾如纱罩柳丝\n灯火半迷离\n几声虫语穿云出\n惊起沙鸥立浅池", theme:"夜雾虫语",emotion:"tranquil",elements:["夜雾","柳丝","虫语","沙鸥"]},
+  ],
+  "autumn-day-cloudy": [
+    {text:"多云秋日意苍凉\n湖面波光映画廊\n枫叶红时芦荻白\n一行归雁向南翔", theme:"枫红归雁",emotion:"wistful",elements:["秋日","波光","枫叶","归雁"]},
+    {text:"阴天秋意更分明\n落叶满长亭\n风过芦花飞似雪\n水寒深处见鱼行", theme:"芦花飞雪",emotion:"peaceful",elements:["阴天","落叶","芦花","鱼"]},
+    {text:"秋日多云柳色新\n水阔鸟声频\n断桥人迹稀疏处\n独见渔翁独钓秋", theme:"秋日渔翁",emotion:"lonely",elements:["秋日","柳色","断桥","渔翁"]},
+    {text:"云开云合柳丝黄\n秋半暖还凉\n几处枫叶红似火\n一双大雁绕雕梁", theme:"云合雁绕",emotion:"tranquil",elements:["云","柳丝","枫叶","大雁"]},
+  ],
+  "autumn-dusk-cloudy": [
+    {text:"秋暮云低天欲雪\n风起雁声绝\n寒鸦归去巢无觅\n一盏孤灯照冷月", theme:"暮云寒鸦",emotion:"melancholy",elements:["秋暮","云","寒鸦","孤灯"]},
+    {text:"阴云漠漠暮秋深\n湖面苍茫路难寻\n断桥人影渐行远\n唯有秋涛夜夜音", theme:"暮云秋涛",emotion:"wistful",elements:["阴云","暮秋","断桥","秋涛"]},
+    {text:"秋暮云深柳色浓\n水阔暮烟重\n归雁万点投林去\n独坐孤亭听晚钟", theme:"秋暮晚钟",emotion:"peaceful",elements:["秋暮","云","归雁","晚钟"]},
+    {text:"晚云如墨压湖心\n雷峰塔影半浮沉\n行人归去无踪迹\n唯有钟声出远林", theme:"晚云远林",emotion:"nostalgic",elements:["晚云","雷峰","塔影","钟声"]},
+  ],
+  "autumn-night-cloudy": [
+    {text:"云重星稀秋夜长\n寂寂水茫茫\n寒风拂柳人空瘦\n一盏残灯映石廊", theme:"云重残灯",emotion:"lonely",elements:["云","秋夜","寒风","残灯"]},
+    {text:"秋夜层云遮半月\n湖心亭外雾如纱\n虫声渐歇蛙声远\n独倚阑干对蒹葭", theme:"云遮蒹葭",emotion:"peaceful",elements:["秋夜","云","雾","蒹葭"]},
+    {text:"秋夜云深月无踪\n水阔柳烟浓\n谁家灯火明还灭\n独坐桥头听远钟", theme:"秋夜云深",emotion:"melancholy",elements:["秋夜","云","灯火","远钟"]},
+    {text:"夜云如墨罩\n灯火稀疏人迹无\n独倚阑干听水响\n几声虫语破寒芦", theme:"夜云虫语",emotion:"tranquil",elements:["夜云","灯火","水响","虫语"]},
+  ],
+
+  // ════════════════════════════════════════════════════════════════
+  // ──── 冬 ────
+  "winter-dawn-snow": [
+    {text:"晨起推窗雪满堤\n断桥白了一层泥\n如画无人赏\n唯有寒梅独自栖", theme:"晨雪寒梅",emotion:"lonely",elements:["晨雪","断桥","寒梅"]},
+    {text:"晓雪纷纷下碧空\n一色玉妆中\n三潭塔影迷蒙处\n唯有梅花映雪红", theme:"晓雪梅红",emotion:"hopeful",elements:["晓雪","三潭","塔影","梅花"]},
+    {text:"冬晓雪满堤\n断桥残柳挂冰丝\n孤山梅蕊初含雪\n早有寒鸦立瘦枝", theme:"冬晓寒鸦",emotion:"peaceful",elements:["冬晓","雪","断桥","寒鸦"]},
+    {text:"晓雪霏霏晓色寒\n水阔柳丝残\n断桥人迹无寻处\n唯有渔翁独钓竿", theme:"晓雪渔翁",emotion:"lonely",elements:["晓雪","晓色","断桥","渔翁"]},
+  ],
+  "winter-day-snow": [
+    {text:"大雪纷飞满断桥\n素裹胜春朝\n孤山处处梅争发\n一树冰心映碧寥", theme:"断桥飞雪",emotion:"joyful",elements:["大雪","断桥","孤山","梅花"]},
+    {text:"银装素裹瘦\n雪压苏堤柳不伸\n冰封湖面如明镜\n一抹红梅报早春", theme:"银装红梅",emotion:"hopeful",elements:["雪","苏堤","冰封","红梅"]},
+    {text:"冬日雪满天\n断桥残柳挂冰弦\n孤山梅蕊初含雪\n早有寒鸦立瘦枝", theme:"冬日寒鸦",emotion:"peaceful",elements:["冬日","雪","断桥","寒鸦"]},
+    {text:"雪落水不波\n断桥残柳挂冰丝\n孤山梅蕊初含雪\n早有寒鸦立瘦枝", theme:"雪落寒鸦",emotion:"serene",elements:["雪","断桥","孤山","寒鸦"]},
+  ],
+  "winter-dusk-snow": [
+    {text:"暮雪纷纷掩断桥\n灯火渐萧条\n归人行尽孤山路\n唯有梅花对雪飘", theme:"暮雪归人",emotion:"nostalgic",elements:["暮雪","断桥","孤山","梅花"]},
+    {text:"黄昏雪急压湖心\n雷峰塔影半遮深\n一盏孤灯明灭处\n寒鸦栖处有闲音", theme:"黄昏雪急",emotion:"peaceful",elements:["黄昏","雪","雷峰","孤灯"]},
+    {text:"冬暮雪满天\n断桥残柳挂冰弦\n孤山梅蕊初含雪\n早有寒鸦立瘦枝", theme:"冬暮寒鸦",emotion:"serene",elements:["冬暮","雪","断桥","寒鸦"]},
+    {text:"暮雪霏霏暮色寒\n水阔柳丝残\n断桥人迹无寻处\n唯有渔翁独钓竿", theme:"暮雪渔翁",emotion:"lonely",elements:["暮雪","暮色","断桥","渔翁"]},
+  ],
+  "winter-night-snow": [
+    {text:"雪夜万籁空\n断桥明月照寒松\n柴扉半掩人声静\n唯有梅花入梦中", theme:"雪夜寒松",emotion:"tranquil",elements:["雪夜","断桥","明月","梅花"]},
+    {text:"夜雪无声落满湖\n如镜月如珠\n远寺钟声来入耳\n一炉红火伴茶炉", theme:"夜雪茶炉",emotion:"peaceful",elements:["夜雪","钟声","茶炉","月"]},
+    {text:"冬夜雪满天\n断桥残柳挂冰弦\n孤山梅蕊初含雪\n早有寒鸦立瘦枝", theme:"冬夜寒鸦",emotion:"serene",elements:["冬夜","雪","断桥","寒鸦"]},
+    {text:"夜雪霏霏夜色寒\n水阔柳丝残\n断桥人迹无寻处\n唯有渔翁独钓竿", theme:"夜雪渔翁",emotion:"lonely",elements:["夜雪","夜色","断桥","渔翁"]},
+  ],
+  "winter-dawn-sunny": [
+    {text:"冬晓霜满堤\n断桥残雪映晨曦\n梅花一树红如火\n白鹭双飞过碧溪", theme:"冬晓残雪",emotion:"hopeful",elements:["冬晓","霜","断桥","梅花"]},
+    {text:"晴冬破晓日微红\n湖面冰层映浅空\n远山如黛晨烟淡\n枯荷数点立寒风", theme:"晴冬枯荷",emotion:"peaceful",elements:["晴冬","冰层","远山","枯荷"]},
+    {text:"冬晓薄雾开\n断桥残雪渐消融\n梅花落尽桃枝发\n燕子归来柳色中", theme:"冬晓燕归",emotion:"joyful",elements:["冬晓","薄雾","梅花","燕子"]},
+    {text:"晓风拂面柳丝轻\n湖面波光映日明\n几处早莺争暖树\n谁家新燕啄冬泥", theme:"早莺新燕",emotion:"hopeful",elements:["晓风","柳丝","早莺","新燕"]},
+  ],
+  "winter-day-sunny": [
+    {text:"冬日晴光映断桥\n寒水入云霄\n梅花半放香初透\n一缕阳光暖柳条", theme:"冬日梅香",emotion:"joyful",elements:["冬日","晴光","断桥","梅花"]},
+    {text:"寒日水不波\n断桥残雪映山阿\n白鸥一双飞不起\n冰面悠然照影多", theme:"寒日白鸥",emotion:"peaceful",elements:["寒日","断桥","白鸥","冰面"]},
+    {text:"冬日水似天\n梅花两岸映红鲜\n画船载酒游人醉\n柳外莺啼破晓烟", theme:"梅花画船",emotion:"serene",elements:["冬日","梅花","画船","莺啼"]},
+    {text:"苏堤冬晓柳如烟\n湖面波光映日圆\n白鹭飞来停复去\n游人如织笑声连", theme:"苏堤冬晓",emotion:"joyful",elements:["苏堤","柳烟","白鹭","波光"]},
+  ],
+  "winter-dusk-sunny": [
+    {text:"冬暮斜阳映断桥\n冰面泛金涛\n梅枝点点红将尽\n一抹余晖照寂寥", theme:"冬暮金涛",emotion:"melancholy",elements:["冬暮","斜阳","断桥","梅枝"]},
+    {text:"晴冬日暮晚风凉\n湖面余晖一片黄\n雷峰塔影斜阳里\n几只归鸦过夕阳", theme:"晴冬归鸦",emotion:"peaceful",elements:["晴冬","余晖","雷峰","归鸦"]},
+    {text:"冬暮夕照迟\n断桥人散柳丝垂\n归鸦几点投林去\n独坐亭中看落晖", theme:"冬暮归鸦",emotion:"lonely",elements:["冬暮","夕照","断桥","归鸦"]},
+    {text:"晚照水似金\n三潭塔影入波深\n渔舟唱晚归帆远\n一曲清歌动客心", theme:"冬晚渔舟",emotion:"nostalgic",elements:["晚照","三潭","渔舟","清歌"]},
+  ],
+  "winter-night-sunny": [
+    {text:"冬夜月明湖面清\n断桥雪映玉壶冰\n梅花香里人独倚\n万籁无声夜已深", theme:"冬夜雪映",emotion:"tranquil",elements:["冬夜","月","断桥","梅花"]},
+    {text:"寒夜星光落碧波\n月冷照残荷\n梅花一缕清香远\n独对长堤听棹歌", theme:"寒夜棹歌",emotion:"peaceful",elements:["寒夜","星光","梅花","棹歌"]},
+    {text:"冬夜月正明\n孤山塔影入波清\n谁家玉笛吹杨柳\n惊起沙鸥梦不成", theme:"冬夜玉笛",emotion:"longing",elements:["冬夜","月","孤山","玉笛"]},
+    {text:"夜色万籁沉\n一轮明月照波心\n微风过处梅香送\n独坐桥头听水音", theme:"冬夜梅香",emotion:"serene",elements:["夜色","明月","梅香","水音"]},
+  ],
+  "winter-dawn-rain": [
+    {text:"冬晨冷雨湿残荷\n萧瑟水增波\n断桥行人撑伞过\n一城寒气入枯萝", theme:"冬雨残荷",emotion:"melancholy",elements:["冬晨","冷雨","残荷","断桥"]},
+    {text:"晓雨敲窗冬意深\n水色暗沉沉\n枯柳垂丝无绿意\n孤山寺外少行人", theme:"晓雨枯柳",emotion:"lonely",elements:["晓雨","冬意","枯柳","孤山"]},
+    {text:"冬雨霏霏晓色寒\n水阔柳丝残\n断桥人迹无寻处\n唯有渔翁独钓竿", theme:"冬雨渔翁",emotion:"peaceful",elements:["冬雨","晓色","断桥","渔翁"]},
+    {text:"晓雨敲窗冬梦醒\n水色暗沉沉\n芦花落尽无人管\n独倚阑干听鸟音", theme:"晓雨鸟音",emotion:"wistful",elements:["晓雨","冬梦","芦花","鸟音"]},
+  ],
+  "winter-day-rain": [
+    {text:"冬雨绵绵下碧空\n水阔雾朦胧\n断桥不见行人过\n唯有寒鸦立柳中", theme:"冬雨寒鸦",emotion:"lonely",elements:["冬雨","雾","断桥","寒鸦"]},
+    {text:"冷雨如针刺旧荷\n冬色更萧索\n游人尽避茶楼内\n一盏清茶暖意多", theme:"冷雨清茶",emotion:"peaceful",elements:["冷雨","旧荷","茶楼","清茶"]},
+    {text:"冬雨如丝湿客衣\n冬色雨中稀\n断桥人迹稀疏处\n独见渔舟泊柳矶", theme:"冬雨渔舟",emotion:"serene",elements:["冬雨","客衣","断桥","渔舟"]},
+    {text:"冬雨潇潇打画船\n湖光山色两茫然\n游人尽入茶楼避\n独倚阑干看水烟", theme:"冬雨茶楼",emotion:"tranquil",elements:["冬雨","画船","茶楼","水烟"]},
+  ],
+  "winter-dusk-rain": [
+    {text:"冬暮雨添三分寒\n灯火水中残\n长堤少人行已尽\n唯有钟声出寺关", theme:"冬暮寺钟",emotion:"peaceful",elements:["冬暮","雨","灯火","钟声"]},
+    {text:"傍晚冬雨打枯枝\n湖面波纹似写诗\n雷峰塔影无人看\n一灯如豆照寒池", theme:"冬雨寒池",emotion:"lonely",elements:["冬雨","枯枝","雷峰","灯"]},
+    {text:"冬暮雨来天色昏\n水阔柳烟深\n归鸦万点投林去\n独坐孤亭听梵音", theme:"冬暮梵音",emotion:"tranquil",elements:["冬暮","柳烟","归鸦","梵音"]},
+    {text:"晚雨敲窗冬梦残\n灯火半阑珊\n行人归去无踪迹\n唯有钟声隔水寒", theme:"晚雨钟声",emotion:"melancholy",elements:["晚雨","灯火","钟声","水寒"]},
+  ],
+  "winter-night-rain": [
+    {text:"冬夜雨声打旧窗\n灯影入苍茫\n寒风一阵炉烟断\n独拥薄衾梦故乡", theme:"冬夜梦乡",emotion:"longing",elements:["冬夜","雨","寒风","故乡"]},
+    {text:"夜雨淅沥寒气侵\n断流水入深林\n残荷枯叶随波去\n一盏孤灯照水心", theme:"夜雨孤灯",emotion:"lonely",elements:["夜雨","寒气","残荷","孤灯"]},
+    {text:"冬雨夜深人未眠\n水响打船弦\n孤山塔影朦胧处\n一点灯光似去年", theme:"冬雨孤灯",emotion:"nostalgic",elements:["冬雨","孤山","塔影","灯光"]},
+    {text:"夜雨潇潇冬梦迟\n水阔柳丝垂\n谁家玉笛吹杨柳\n惊起沙鸥立浅池", theme:"夜雨玉笛",emotion:"wistful",elements:["夜雨","柳丝","玉笛","沙鸥"]},
+  ],
+  "winter-dawn-fog": [
+    {text:"冬晓浓雾锁孤山\n不见水生烟\n枯荷零落寒霜重\n唯有钟声过断桥", theme:"冬雾钟声",emotion:"peaceful",elements:["冬晓","浓雾","孤山","钟声"]},
+    {text:"晨雾如铅压断桥\n冬色太萧条\n远山隐约疑无路\n一盏渔灯渡碧涛", theme:"晨雾渔灯",emotion:"wistful",elements:["晨雾","断桥","远山","渔灯"]},
+    {text:"冬晓浓雾隐孤山\n水阔柳烟寒\n断桥人迹无寻处\n唯有渔翁独钓竿", theme:"冬晓渔翁",emotion:"lonely",elements:["冬晓","浓雾","孤山","渔翁"]},
+    {text:"晓雾如纱罩柳丝\n冬色半迷离\n几声鸦语穿云出\n惊起沙鸥立浅池", theme:"晓雾鸦语",emotion:"serene",elements:["晓雾","柳丝","鸦语","沙鸥"]},
+  ],
+  "winter-day-fog": [
+    {text:"冬雾笼湖似墨涂\n断桥残雪隐苍芜\n孤山寺远钟声暗\n一叶归舟迷路途", theme:"冬雾孤舟",emotion:"mysterious",elements:["冬雾","断桥","孤山","归舟"]},
+    {text:"浓雾锁尽景\n枯荷败柳不堪看\n行人稀少长堤冷\n唯有茶烟出寺门", theme:"雾锁茶烟",emotion:"melancholy",elements:["浓雾","枯荷","长堤","茶烟"]},
+    {text:"冬雾空蒙柳色深\n水阔鸟声沉\n断桥隐约烟波里\n独见渔舟泊柳阴", theme:"冬雾渔舟",emotion:"peaceful",elements:["冬雾","柳色","断桥","渔舟"]},
+    {text:"雾重景色殊\n孤山塔影入虚无\n游人尽入云深处\n独倚阑干看水图", theme:"雾重水图",emotion:"mysterious",elements:["雾","孤山","塔影","云深"]},
+  ],
+  "winter-dusk-fog": [
+    {text:"冬暮雾重压湖心\n雷峰塔影半浮沉\n灯火迷蒙人归去\n一声长啸入寒林", theme:"冬暮寒林",emotion:"lonely",elements:["冬暮","雾","雷峰","寒林"]},
+    {text:"晚雾沉沉暗\n枯枝如墨画中看\n行人渐少灯初上\n一缕炊烟过断桥", theme:"晚雾炊烟",emotion:"peaceful",elements:["晚雾","枯枝","灯","炊烟"]},
+    {text:"冬暮烟笼柳色深\n水阔暮云沉\n归鸦万点投林去\n独坐孤亭听晚钟", theme:"冬暮烟笼",emotion:"serene",elements:["冬暮","烟笼","归鸦","晚钟"]},
+    {text:"晚雾如纱罩柳丝\n灯火半迷离\n几声钟磬随风远\n独倚阑干看水时", theme:"晚雾钟磬",emotion:"tranquil",elements:["晚雾","柳丝","钟磬","灯火"]},
+  ],
+  "winter-night-fog": [
+    {text:"冬夜雾浓不见月\n灯火半明灭\n寒风过处枯荷响\n独坐亭中待雪歇", theme:"雾夜待雪",emotion:"hopeful",elements:["冬夜","雾","枯荷","雪"]},
+    {text:"雾锁寒湖夜色深\n断桥无人月无痕\n远寺钟声来入耳\n炉中炭火暖闲身", theme:"雾夜炭火",emotion:"peaceful",elements:["雾","寒湖","钟声","炭火"]},
+    {text:"冬夜雾重月无踪\n水阔柳烟浓\n谁家灯火明还灭\n独坐桥头听远钟", theme:"冬夜远钟",emotion:"lonely",elements:["冬夜","雾","灯火","远钟"]},
+    {text:"夜雾如纱罩柳丝\n灯火半迷离\n几声虫语穿云出\n惊起沙鸥立浅池", theme:"夜雾虫语",emotion:"tranquil",elements:["夜雾","柳丝","虫语","沙鸥"]},
+  ],
+  "winter-day-cloudy": [
+    {text:"多云冬日渐阴沉\n湖面风来寒意深\n枯荷败叶随波去\n一岸萧条少路人", theme:"多云枯荷",emotion:"melancholy",elements:["冬日","风","枯荷","路人"]},
+    {text:"阴天冬冷过苏堤\n水色似前溪\n远山雪帽犹未化\n一两只鸥自在飞", theme:"阴天雪帽",emotion:"peaceful",elements:["阴天","苏堤","远山","鸥"]},
+    {text:"冬日多云柳色新\n水阔鸟声频\n断桥人迹稀疏处\n独见渔翁独钓冬", theme:"冬日渔翁",emotion:"lonely",elements:["冬日","柳色","断桥","渔翁"]},
+    {text:"云开云合柳丝黄\n冬半暖还凉\n几处梅花红似火\n一双寒鸦绕雕梁", theme:"云合鸦绕",emotion:"tranquil",elements:["云","柳丝","梅花","寒鸦"]},
+  ],
+  "winter-dusk-cloudy": [
+    {text:"冬暮云低天色暗\n灯火渐阑珊\n行人归去长堤冷\n唯有风声过断桥", theme:"冬暮风声",emotion:"melancholy",elements:["冬暮","云","灯火","风声"]},
+    {text:"阴云漠漠暮来迟\n湖面苍茫雁不知\n雷峰塔下人烟少\n一盏孤灯照客思", theme:"阴云孤灯",emotion:"longing",elements:["阴云","暮","雷峰","孤灯"]},
+    {text:"冬暮云深柳色浓\n水阔暮烟重\n归鸦万点投林去\n独坐孤亭听晚钟", theme:"冬暮晚钟",emotion:"peaceful",elements:["冬暮","云","归鸦","晚钟"]},
+    {text:"晚云如墨压湖心\n雷峰塔影半浮沉\n行人归去无踪迹\n唯有钟声出远林", theme:"晚云远林",emotion:"nostalgic",elements:["晚云","雷峰","塔影","钟声"]},
+  ],
+  "winter-night-cloudy": [
+    {text:"云层厚重星全无\n冬夜冷如初\n寒风不歇枯枝响\n独坐炉前翻旧书", theme:"云厚旧书",emotion:"peaceful",elements:["云","冬夜","寒风","旧书"]},
+    {text:"冬夜层云遮半月\n湖心亭外水如铅\n虫声已尽蛙声绝\n唯有寒风过短檐", theme:"云遮寒风",emotion:"lonely",elements:["冬夜","云","湖心亭","寒风"]},
+    {text:"冬夜云深月无踪\n水阔柳烟浓\n谁家灯火明还灭\n独坐桥头听远钟", theme:"冬夜云深",emotion:"melancholy",elements:["冬夜","云","灯火","远钟"]},
+    {text:"夜云如墨罩\n灯火稀疏人迹无\n独倚阑干听水响\n几声鸦语破寒芦", theme:"夜云鸦语",emotion:"tranquil",elements:["夜云","灯火","水响","鸦语"]},
+  ],
+};
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 5. WMO 天气代码解码                                            ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+function decodeWMO(code, isDay){
+  if(code===0)               return{label:"晴",icon:isDay?"☀️":"🌙",cat:"sunny"};
+  if(code<=2)                return{label:"晴间多云",icon:"⛅",cat:"sunny"};
+  if(code===3)               return{label:"阴天",icon:"☁️",cat:"cloudy"};
+  if(code===45||code===48)   return{label:"大雾",icon:"🌫️",cat:"fog"};
+  if(code>=51&&code<=57)     return{label:"毛毛雨",icon:"🌦️",cat:"rain"};
+  if(code>=61&&code<=67)     return{label:"降雨",icon:"🌧️",cat:"rain"};
+  if(code>=71&&code<=77)     return{label:"降雪",icon:"❄️",cat:"snow"};
+  if(code>=80&&code<=82)     return{label:"阵雨",icon:"🌧️",cat:"rain"};
+  if(code>=85&&code<=86)     return{label:"阵雪",icon:"🌨️",cat:"snow"};
+  if(code>=95)               return{label:"雷雨",icon:"⛈️",cat:"rain"};
+  return{label:"多云",icon:"⛅",cat:"cloudy"};
+}
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 6. 工具函数                                                    ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+const WEEK=["日","一","二","三","四","五","六"];
+const SEASON_CN={spring:"春",summer:"夏",autumn:"秋",winter:"冬"};
+const PERIOD_CN={dawn:"晨",day:"日间",dusk:"暮",night:"夜"};
+const WEATHER_CN={sunny:"晴",rain:"雨",snow:"雪",fog:"雾",cloudy:"多云"};
+
+function getSeason(m){return m>=3&&m<=5?"spring":m>=6&&m<=8?"summer":m>=9&&m<=11?"autumn":"winter";}
+function getPeriod(h){return h>=5&&h<8?"dawn":h>=8&&h<17?"day":h>=17&&h<19?"dusk":"night";}
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 7. 背景图选择（匹配实况 + 防重复）                              ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+function chooseBg(season, period, weather){
+  const tags=new Set([season, period, weather]);
+  if(period==="dawn") tags.add("sunrise");
+  if(period==="dusk") tags.add("sunset");
+  if(period==="night") tags.add("night");
+  const hist=getHistory("bg");
+  const shuffled=[...BG_IMAGES].sort(()=>Math.random()-.5);
+  let best=null, bestScore=-1;
+  for(const img of shuffled){
+    if(hist.includes(img.url)) continue;
+    const score=img.tags.filter(t=>tags.has(t)).length;
+    if(score>bestScore){bestScore=score;best=img;}
+  }
+  if(!best) best=shuffled.find(i=>i.tags.includes(period)) || pick(shuffled);
+  pushHistory("bg",best.url);
+  return best;
+}
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 8. 诗词选择（防重复 + 名人/AI 各半 + 主题追踪 + 情感）         ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+function pickPoem(season, period, weather, temp){
+  const last=getHistory("type");
+  const lastType=last.length?last[last.length-1]:"";
+  let useAI;
+  if(!last.length) useAI=Math.random()<.5;
+  else if(lastType==="ai") useAI=false;
+  else useAI=true;
+
+  const recentThemes=getRecentThemes(3);
+
+  if(useAI){
+    const poem=pickAIPoem(season,period,weather,recentThemes);
+    if(poem){
+      pushHistory("type","ai");
+      pushTheme(poem.theme);
+      return{...poem, source:"AI 即兴"};
+    }
+  }
+  const classic=pickClassicPoem(season,period,weather,recentThemes);
+  if(classic){
+    pushHistory("type","classic");
+    pushTheme(classic.theme);
+    return{...classic, source:"名人诗词"};
+  }
+  const ai=pickAIPoem(season,period,weather,recentThemes);
+  if(ai){pushHistory("type","ai");pushTheme(ai.theme);return{...ai,source:"AI 即兴"};}
+  pushHistory("type","classic");
+  return{text:"欲把此间比西子\n淡妆浓抹总相宜",author:"苏轼",dynasty:"宋",source:"名人诗词",theme:"西子比景",emotion:"joyful",elements:["西子","淡妆","浓抹"]};
+}
+
+function pickClassicPoem(season,period,weather,recentThemes){
+  const hist=getHistory("classic");
+  const themeSet=new Set(recentThemes);
+  let pool=CLASSIC.filter(p=>p.s===season&&p.p===period&&p.w===weather&&!hist.includes(p.id)&&!themeSet.has(p.theme));
+  if(!pool.length) pool=CLASSIC.filter(p=>p.s===season&&p.p===period&&!hist.includes(p.id));
+  if(!pool.length) pool=CLASSIC.filter(p=>p.s===season&&!hist.includes(p.id));
+  if(!pool.length) pool=CLASSIC.filter(p=>p.s==="any"&&!hist.includes(p.id));
+  if(!pool.length){
+    pool=CLASSIC.filter(p=>p.s===season&&p.p===period&&p.w===weather);
+    if(!pool.length) pool=CLASSIC.filter(p=>p.s===season);
+    if(!pool.length) pool=CLASSIC.filter(p=>p.s==="any");
+  }
+  if(!pool.length) return null;
+  const poem=pick(pool);
+  pushHistory("classic",poem.id);
+  return poem;
+}
+
+function pickAIPoem(season,period,weather,recentThemes){
+  const key=`${season}-${period}-${weather}`;
+  let arr=AI_TPL[key];
+  if(!arr) arr=AI_TPL[`${season}-${period}-sunny`]||AI_TPL[`${season}-day-${weather}`]||null;
+  if(!arr) return null;
+
+  const themeSet=new Set(recentThemes);
+  const filtered=arr.filter(p=>!themeSet.has(p.theme));
+  const source=filtered.length?filtered:arr;
+  return pick(source);
+}
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 9. 天气特效                                                    ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+let rainCtx,rainDrops=[],rainAF=null,snowEls=[];
+
+function applyWeatherFX(cat){
+  cancelAnimationFrame(rainAF);
+  snowEls.forEach(e=>e.remove());snowEls=[];
+  document.body.className="";
+  const bgImg=document.getElementById("bg-img");
+  bgImg.style.filter=cat==="fog"?"brightness(.62) saturate(.55) blur(3.5px)":cat==="snow"?"brightness(.84) saturate(.5)":cat==="rain"?"brightness(.68) saturate(.8)":"brightness(.72) saturate(1.05)";
+  document.body.classList.add("w-"+cat);
+  if(cat==="rain"){initRain();const loop=()=>{drawRain();rainAF=requestAnimationFrame(loop)};loop();}
+  else if(cat==="snow") createSnow();
+}
+
+function initRain(){
+  const c=document.getElementById("rain-canvas");c.width=innerWidth;c.height=innerHeight;
+  rainCtx=c.getContext("2d");
+  rainDrops=Array.from({length:220},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,len:Math.random()*22+10,speed:Math.random()*7+9,alpha:Math.random()*.38+.18}));
+}
+function drawRain(){
+  if(!rainCtx)return;const c=document.getElementById("rain-canvas");rainCtx.clearRect(0,0,c.width,c.height);rainCtx.lineWidth=1;
+  rainDrops.forEach(d=>{rainCtx.save();rainCtx.globalAlpha=d.alpha;rainCtx.strokeStyle="rgba(170,195,215,.7)";rainCtx.beginPath();rainCtx.moveTo(d.x,d.y);rainCtx.lineTo(d.x-d.len*.12,d.y+d.len);rainCtx.stroke();rainCtx.restore();d.y+=d.speed;if(d.y>c.height){d.y=-d.len;d.x=Math.random()*c.width;}});
+}
+function createSnow(){
+  for(let i=0;i<55;i++){const el=document.createElement("div");el.className="snowflake";el.textContent="❄";el.style.cssText=`left:${Math.random()*100}vw;font-size:${Math.random()*14+7}px;animation-duration:${Math.random()*6+4}s;animation-delay:${Math.random()*6}s;opacity:${Math.random()*.55+.2}`;document.body.appendChild(el);snowEls.push(el);}
+}
+window.addEventListener("resize",()=>{const c=document.getElementById("rain-canvas");c.width=innerWidth;c.height=innerHeight;if(document.body.classList.contains("w-rain"))initRain();});
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 10. 竖排诗词展示动画（一句一列 + 情感维度）                    ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+let poemTimer=null;
+const poemScroll=document.getElementById("poem-scroll");
+const poemContainer=document.getElementById("poem-container");
+const poemTag=document.getElementById("poem-context-tag");
+const emotionTag=document.getElementById("emotion-tag");
+const elementsTag=document.getElementById("elements-tag");
+
+function showPoem(season,period,weather,temp){
+  if(poemTimer)clearTimeout(poemTimer);
+  poemScroll.classList.remove("visible");
+  poemTag.classList.remove("visible");
+  emotionTag.classList.remove("visible");
+  elementsTag.classList.remove("visible");
+  
+  setTimeout(()=>{
+    const poem=pickPoem(season,period,weather,temp);
+    
+    // 清空容器
+    poemContainer.innerHTML = '';
+    
+    // 添加署名列（最右侧）
+    const sigCol = document.createElement('div');
+    sigCol.id = 'poem-sig-col';
+    if(poem.source==="AI 即兴"){
+      sigCol.textContent = "——AI · 今日窗景";
+    } else {
+      sigCol.textContent = `——${poem.dynasty} · ${poem.author}`;
+    }
+    poemContainer.appendChild(sigCol);
+    
+    // 将诗句按换行分割，每句一列（从右到左）
+    const lines = poem.text.split('\n');
+    lines.forEach(line => {
+      const lineDiv = document.createElement('div');
+      lineDiv.className = 'poem-line';
+      lineDiv.textContent = line;
+      poemContainer.appendChild(lineDiv);
+    });
+
+    // 底部上下文标签
+    poemTag.textContent=`${SEASON_CN[season]||""} · ${PERIOD_CN[period]||""} · ${WEATHER_CN[weather]||weather}${temp?"  "+temp+"℃":""}`;
+
+    // 情感标签
+    const emotionInfo = EMOTIONS[poem.emotion];
+    if(emotionInfo){
+      emotionTag.querySelector('.emotion-name').textContent = emotionInfo.name;
+      emotionTag.querySelector('.emotion-desc').textContent = emotionInfo.desc;
+      emotionTag.classList.add("visible");
+    }
+
+    // 意境元素
+    if(poem.elements && poem.elements.length > 0){
+      elementsTag.innerHTML = '';
+      poem.elements.forEach(el => {
+        const span = document.createElement('span');
+        span.className = 'element-item';
+        span.textContent = el;
+        elementsTag.appendChild(span);
+      });
+      elementsTag.classList.add("visible");
+    }
+
+    poemScroll.classList.add("visible");
+    poemTag.classList.add("visible");
+    poemTimer=setTimeout(()=>{
+      poemScroll.classList.remove("visible");
+      poemTag.classList.remove("visible");
+      emotionTag.classList.remove("visible");
+      elementsTag.classList.remove("visible");
+    },10000);
+  },600);
+}
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 11. 时钟                                                       ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+function updateClock(){
+  const n=new Date();
+  document.getElementById("clock-time").textContent=[n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,"0")).join(":");
+  document.getElementById("clock-date").textContent=`${n.getFullYear()}年${n.getMonth()+1}月${n.getDate()}日 星期${WEEK[n.getDay()]}`;
+}
+setInterval(updateClock,1000);updateClock();
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 12. 西湖白噪音（水波声）                                       ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+const audio=document.getElementById("bg-audio");
+const audioBtn=document.getElementById("audio-btn");
+audio.volume=.35;
+
+function toggleAudio(){
+  if(audio.paused){
+    audio.play().catch(()=>{});
+    audioBtn.textContent="🔊";
+    audioBtn.classList.add("playing");
+  }else{
+    audio.pause();
+    audioBtn.textContent="🌊";
+    audioBtn.classList.remove("playing");
+  }
+}
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 13. 模式管理                                                   ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+let currentMode="now";
+let myState={season:"spring",period:"dawn",weather:"sunny"};
+
+function switchMode(mode){
+  currentMode=mode;
+  document.getElementById("btn-now").classList.toggle("active",mode==="now");
+  document.getElementById("btn-my").classList.toggle("active",mode==="my");
+  document.getElementById("my-panel").classList.toggle("open",mode==="my");
+  if(mode==="now"){
+    document.getElementById("weather-info").style.opacity="1";
+    fetchWeatherAndInit();
+  } else {
+    document.getElementById("weather-info").style.opacity=".4";
+    triggerMyShow();
+  }
+}
+
+function mySel(type,btn){
+  const g=document.getElementById("sg-"+type);
+  g.querySelectorAll(".seg-btn").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  myState[type]=btn.dataset.v;
+  triggerMyShow();
+}
+
+function myRandom(){
+  const ss=["spring","summer","autumn","winter"];
+  const pp=["dawn","day","dusk","night"];
+  const ww=["sunny","rain","snow","fog","cloudy"];
+  myState.season=pick(ss);myState.period=pick(pp);myState.weather=pick(ww);
+  ["season","period","weather"].forEach(t=>{
+    const g=document.getElementById("sg-"+t);
+    g.querySelectorAll(".seg-btn").forEach(b=>b.classList.toggle("active",b.dataset.v===myState[t]));
+  });
+  triggerMyShow();
+}
+
+function triggerMyShow(){
+  const s=myState.season,p=myState.period,w=myState.weather;
+  applyWeatherFX(w);
+  const bg=chooseBg(s,p,w);
+  loadBgImage(bg);
+  updateWeatherUI(null,WEATHER_CN[w]||w,null);
+  setTimeout(()=>showPoem(s,p,w,null),1000);
+}
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 14. 背景图加载（16:9 保持比例）                                ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+function loadBgImage(info){
+  const img=document.getElementById("bg-img");
+  const credit=document.getElementById("img-credit");
+  const fallbacks=[info.url,...BG_IMAGES.filter(i=>!i.local).map(i=>i.url).sort(()=>Math.random()-.5).slice(0,3)];
+  let idx=0;
+  function tryLoad(){
+    if(idx>=fallbacks.length)return;
+    const url=fallbacks[idx++];
+    const tmp=new Image();
+    tmp.onload=()=>{img.src=url;img.classList.add("loaded");credit.textContent=info.desc+" · "+info.credit;};
+    tmp.onerror=()=>setTimeout(tryLoad,300);
+    tmp.src=url;
+  }
+  tryLoad();
+}
+
+function updateWeatherUI(icon,label,temp){
+  document.getElementById("weather-icon").textContent=icon||"☁";
+  document.getElementById("weather-desc").textContent=label?`西湖·${label}`:document.getElementById("weather-desc").textContent;
+  document.getElementById("weather-temp").textContent=temp?`${temp}℃  杭州西湖区`:"杭州西湖区";
+}
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 15. 核心：此刻·西湖 — 获取实况天气                              ║
+// ╚═══════════════════════════════════════════════════════════════════╝
+async function fetchWeatherAndInit(){
+  const tip=document.getElementById("loading-tip");
+  tip.style.display="block";tip.style.opacity="1";
+  tip.textContent="正在获取西湖实况天气...";
+
+  const now=new Date();
+  const season=getSeason(now.getMonth()+1);
+  const period=getPeriod(now.getHours());
+  let weatherCat="sunny",weatherLabel="晴",weatherIcon="☀️",tempStr="";
+
+  try{
+    const res=await fetch("https://api.open-meteo.com/v1/forecast?latitude=30.25&longitude=120.16&current_weather=true&timezone=Asia%2FShanghai",{signal:AbortSignal.timeout(6000)});
+    if(!res.ok) throw new Error("API error");
+    const data=await res.json();
+    const cw=data.current_weather;
+    const decoded=decodeWMO(cw.weathercode,cw.is_day);
+    weatherCat=decoded.cat;weatherLabel=decoded.label;weatherIcon=decoded.icon;
+    tempStr=Math.round(cw.temperature)+"";
+    tip.textContent=`西湖实况：${weatherLabel} ${tempStr}℃ · 自动匹配诗词中...`;
+  }catch(e){
+    weatherCat=season==="winter"?"sunny":season==="spring"?(Math.random()<.4?"rain":"sunny"):Math.random()<.3?"rain":"sunny";
+    weatherLabel=WEATHER_CN[weatherCat]||"晴";
+    weatherIcon=weatherCat==="rain"?"🌧️":weatherCat==="snow"?"❄️":"☀️";
+    tip.textContent="天气获取失败，已根据季节推算 · "+weatherLabel;
+  }
+
+  updateWeatherUI(weatherIcon,weatherLabel,tempStr);
+  document.getElementById("weather-temp").textContent=tempStr?`${tempStr}℃  杭州西湖区`:"杭州西湖区";
+
+  applyWeatherFX(weatherCat);
+  const bg=chooseBg(season,period,weatherCat);
+  loadBgImage(bg);
+
+  setTimeout(()=>{
+    showPoem(season,period,weatherCat,tempStr);
+    tip.style.opacity="0";
+    setTimeout(()=>tip.style.display="none",1000);
+  },1200);
+}
+
+// ╔═══════════════════════════════════════════════════════════════════╗
+// ║ 16. 启动                                                       ═
+// ╚═══════════════════════════════════════════════════════════════════╝
+fetchWeatherAndInit();
+</script>
+</body>
+</html>

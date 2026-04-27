@@ -1,0 +1,8 @@
+{
+  "usingComponents": {},
+  "navigationBarTitleText": "西湖窗景",
+  "navigationBarBackgroundColor": "#0a1628",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#0a1628",
+  "disableScroll": true
+}

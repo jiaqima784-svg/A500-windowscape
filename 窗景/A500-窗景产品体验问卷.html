@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A500 窗景产品 · 体验反馈问卷</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --primary: #3B82F6;
+  --primary-light: rgba(59,130,246,0.1);
+  --text: #171717;
+  --text-secondary: #737373;
+  --border: #E5E5E5;
+  --bg: #FAFAFA;
+  --card: #FFFFFF;
+  --radius: 12px;
+}
+
+body {
+  font-family: 'PingFang SC', 'Source Han Sans SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  padding: 40px 0 32px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 32px;
+}
+
+.header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.header p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* Progress */
+.progress-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-bottom: 40px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.5s ease;
+}
+
+/* Sections */
+.section {
+  display: none;
+  animation: fadeUp 0.4s ease;
+}
+
+.section.active { display: block; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.section-header {
+  margin-bottom: 28px;
+}
+
+.section-number {
+  font-size: 12px;
+  color: var(--primary);
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.section-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Question */
+.question {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 16px;
+  transition: border-color 0.2s;
+}
+
+.question:hover { border-color: #D4D4D4; }
+
+.question.required::after {
+  content: '必答';
+  float: right;
+  font-size: 11px;
+  color: var(--primary);
+  background: var(--primary-light);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.q-text {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.q-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+/* Radio options */
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.option:hover { border-color: var(--primary); background: var(--primary-light); }
+
+.option input[type="radio"],
+.option input[type="checkbox"] {
+  accent-color: var(--primary);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.option.selected {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+/* Likert scale */
+.likert {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.likert-item {
+  flex: 1;
+  text-align: center;
+  padding: 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
+}
+
+.likert-item:hover { border-color: var(--primary); }
+.likert-item.selected { border-color: var(--primary); background: var(--primary-light); font-weight: 600; }
+.likert-item input { display: none; }
+
+/* Slider */
+.slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slider-group input[type="range"] {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(90deg, var(--border), var(--border));
+  border-radius: 3px;
+  outline: none;
+}
+
+.slider-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.slider-value {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+/* Text area */
+textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+  line-height: 1.6;
+}
+
+textarea:focus { border-color: var(--primary); }
+
+/* Checkbox grid */
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.checkbox-item:hover { border-color: var(--primary); }
+.checkbox-item.selected { border-color: var(--primary); background: var(--primary-light); }
+.checkbox-item input[type="checkbox"] { accent-color: var(--primary); width: 16px; height: 16px; }
+
+/* Navigation */
+.nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.btn {
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  font-family: inherit;
+}
+
+.btn-secondary {
+  background: var(--bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover { background: #F0F0F0; }
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover { background: #2563EB; }
+
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Thank you page */
+.thank-you {
+  text-align: center;
+  padding: 60px 0;
+}
+
+.thank-you .icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.thank-you h2 {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.thank-you p {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Summary table */
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 24px;
+  font-size: 13px;
+}
+
+.summary-table th, .summary-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.summary-table th {
+  color: var(--text-secondary);
+  font-weight: 500;
+  background: var(--bg);
+}
+
+.summary-table .answer {
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .container { padding: 24px 16px 60px; }
+  .likert { flex-wrap: wrap; }
+  .likert-item { min-width: calc(50% - 4px); }
+  .checkbox-grid { grid-template-columns: 1fr; }
+  .header h1 { font-size: 20px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>A500 窗景产品 · 体验反馈问卷</h1>
+    <p>感谢体验 A500「窗剧场」Demo。请根据您刚才的体验，填写以下反馈。预计耗时 5-8 分钟。</p>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-bar">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+
+  <form id="surveyForm">
+
+    <!-- ===== SECTION 1: 基本信息 ===== -->
+    <div class="section active" data-section="1">
+      <div class="section-header">
+        <div class="section-number">第一部分</div>
+        <div class="section-title">基本信息</div>
+        <div class="section-desc">帮助我们了解您的背景和使用场景</div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">您的年龄段是？</div>
+        <div class="options">
+          <label class="option"><input type="radio" name="age" value="18-24"> 18-24 岁</label>
+          <label class="option"><input type="radio" name="age" value="25-30"> 25-30 岁</label>
+          <label class="option"><input type="radio" name="age" value="31-40"> 31-40 岁</label>
+          <label class="option"><input type="radio" name="age" value="41-50"> 41-50 岁</label>
+          <label class="option"><input type="radio" name="age" value="50+"> 50 岁以上</label>
+        </div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">您的居住环境？</div>
+        <div class="options">
+          <label class="option"><input type="radio" name="living" value="独居"> 独居</label>
+          <label class="option"><input type="radio" name="living" value="夫妻二人"> 夫妻 / 伴侣二人</label>
+          <label class="option"><input type="radio" name="living" value="有孩家庭"> 有孩家庭</label>
+          <label class="option"><input type="radio" name="living" value="与父母同住"> 与父母同住</label>
+          <label class="option"><input type="radio" name="living" value="宿舍"> 宿舍 / 合租</label>
+        </div>
+      </div>
+
+      <div class="question">
+        <div class="q-text">您平均每天在家看电视/屏幕的时间是？</div>
+        <div class="options">
+          <label class="option"><input type="radio" name="tvtime" value="0-1h"> 不到 1 小时</label>
+          <label class="option"><input type="radio" name="tvtime" value="1-3h"> 1-3 小时</label>
+          <label class="option"><input type="radio" name="tvtime" value="3-5h"> 3-5 小时</label>
+          <label class="option"><input type="radio" name="tvtime" value="5h+"> 5 小时以上</label>
+        </div>
+      </div>
+
+      <div class="nav-buttons">
+        <div></div>
+        <button type="button" class="btn btn-primary" onclick="nextSection(2)">下一步 →</button>
+      </div>
+    </div>
+
+    <!-- ===== SECTION 2: 每日一诗 ===== -->
+    <div class="section" data-section="2">
+      <div class="section-header">
+        <div class="section-number">第二部分</div>
+        <div class="section-title">功能体验：每日一诗</div>
+        <div class="section-desc">评价从待机唤醒时展示的诗词功能</div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">"每日一诗"功能给您的整体感受如何？</div>
+        <div class="q-hint">从唤醒时展示一句匹配当前时间、季节、天气的诗词，带来仪式感</div>
+        <div class="likert">
+          <label class="likert-item"><input type="radio" name="poem" value="1">非常差</label>
+          <label class="likert-item"><input type="radio" name="poem" value="2">较差</label>
+          <label class="likert-item"><input type="radio" name="poem" value="3">一般</label>
+          <label class="likert-item"><input type="radio" name="poem" value="4">较好</label>
+          <label class="likert-item"><input type="radio" name="poem" value="5">非常好</label>
+        </div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">诗词的展示方式（淡入→停留→淡出）节奏是否合适？</div>
+        <div class="options">
+          <label class="option"><input type="radio" name="poemPace" value="太快"> 太快，来不及欣赏</label>
+          <label class="option"><input type="radio" name="poemPace" value="稍快"> 稍快，但还能接受</label>
+          <label class="option"><input type="radio" name="poemPace" value="刚好"> 刚好，节奏舒适</label>
+          <label class="option"><input type="radio" name="poemPace" value="稍慢"> 稍慢，可以更久一些</label>
+          <label class="option"><input type="radio" name="poemPace" value="太慢"> 太慢，感到无聊</label>
+        </div>
+      </div>
+
+      <div class="question">
+        <div class="q-text">伴随诗词的古琴/箫声音效体验如何？</div>
+        <div class="options">
+          <label class="option"><input type="radio" name="poemSound" value="很好"> 很好，增加了仪式感</label>
+          <label class="option"><input type="radio" name="poemSound" value="可以"> 可以，但可有可无</label>
+          <label class="option"><input type="radio" name="poemSound" value="打扰"> 有些打扰，希望能关闭</label>
+        </div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">如果可以为诗词功能添加一项偏好，您会选择？</div>
+        <div class="checkbox-grid">
+          <label class="checkbox-item"><input type="checkbox" name="poemPref" value="自定义库"> 自定义诗词库</label>
+          <label class="checkbox-item"><input type="checkbox" name="poemPref" value="每日推送"> 每日固定推送</label>
+          <label class="checkbox-item"><input type="checkbox" name="poemPref" value="AI生成"> AI 生成原创诗句</label>
+          <label class="checkbox-item"><input type="checkbox" name="poemPref" value="关闭"> 完全关闭此功能</label>
+          <label class="checkbox-item"><input type="checkbox" name="poemPref" value="双语"> 中英双语版本</label>
+          <label class="checkbox-item"><input type="checkbox" name="poemPref" value="诗人故事"> 附带诗人故事</label>
+        </div>
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-secondary" onclick="prevSection(1)">← 上一步</button>
+        <button type="button" class="btn btn-primary" onclick="nextSection(3)">下一步 →</button>
+      </div>
+    </div>
+
+    <!-- ===== SECTION 3: 智能窗景屏保 ===== -->
+    <div class="section" data-section="3">
+      <div class="section-header">
+        <div class="section-number">第三部分</div>
+        <div class="section-title">功能体验：智能窗景屏保</div>
+        <div class="section-desc">评价窗景内容、叙事性和环境变化</div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">窗景屏保的整体视觉美感如何？</div>
+        <div class="slider-group">
+          <div class="slider-value" id="v1">5</div>
+          <input type="range" min="1" max="10" value="5" oninput="document.getElementById('v1').textContent=this.value">
+          <div class="slider-labels"><span>非常单调</span><span>非常优美</span></div>
+        </div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">切换不同时段（晨/日/暮/夜）时，光影变化是否自然？</div>
+        <div class="likert">
+          <label class="likert-item"><input type="radio" name="lightChange" value="1">很不自然</label>
+          <label class="likert-item"><input type="radio" name="lightChange" value="2">不太自然</label>
+          <label class="likert-item"><input type="radio" name="lightChange" value="3">一般</label>
+          <label class="likert-item"><input type="radio" name="lightChange" value="4">比较自然</label>
+          <label class="likert-item"><input type="radio" name="lightChange" value="5">非常自然</label>
+        </div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">切换天气时（晴/雨/阴/雪），窗景的变化是否让你感受到"真实的窗"？</div>
+        <div class="q-hint">例：雨天时是否看到玻璃上的雨痕，雪天是否有雪景氛围</div>
+        <div class="options">
+          <label class="option"><input type="radio" name="weatherRealism" value="强烈"> 强烈感受到了真实感</label>
+          <label class="option"><input type="radio" name="weatherRealism" value="一些"> 有一些感受，但不够</label>
+          <label class="option"><input type="radio" name="weatherRealism" value="没有"> 没有感受到明显变化</label>
+        </div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">对"窗剧场"叙事角色（松鼠、摇橹船、鸟）的看法？</div>
+        <div class="options">
+          <label class="option"><input type="radio" name="narrative" value="喜欢"> 非常喜欢，增加了故事性</label>
+          <label class="option"><input type="radio" name="narrative" value="还行"> 还行，有比没有好</label>
+          <label class="option"><input type="radio" name="narrative" value="多余"> 感觉多余，更喜欢纯风景</label>
+          <label class="option"><input type="radio" name="narrative" value="需要更多"> 角色太少了，需要更多种类</label>
+        </div>
+      </div>
+
+      <div class="question">
+        <div class="q-text">您最希望增加哪些屏景内容？（可多选）</div>
+        <div class="checkbox-grid">
+          <label class="checkbox-item"><input type="checkbox" name="wishContent" value="星空"> 星空 / 银河</label>
+          <label class="checkbox-item"><input type="checkbox" name="wishContent" value="城市"> 城市天际线</label>
+          <label class="checkbox-item"><input type="checkbox" name="wishContent" value="森林"> 森林 / 山间</label>
+          <label class="checkbox-item"><input type="checkbox" name="wishContent" value="海边"> 海边 / 沙滩</label>
+          <label class="checkbox-item"><input type="checkbox" name="wishContent" value="沙漠"> 沙漠 / 荒漠</label>
+          <label class="checkbox-item"><input type="checkbox" name="wishContent" value="太空"> 太空 / 宇航</label>
+        </div>
+      </div>
+
+      <div class="question">
+        <div class="q-text">您对窗景屏保还有其他意见或建议吗？</div>
+        <textarea name="screensaverFeedback" placeholder="例如：您觉得哪个场景最打动您？哪些地方可以改进？"></textarea>
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-secondary" onclick="prevSection(2)">← 上一步</button>
+        <button type="button" class="btn btn-primary" onclick="nextSection(4)">下一步 →</button>
+      </div>
+    </div>
+
+    <!-- ===== SECTION 4: 息屏显示模式 ===== -->
+    <div class="section" data-section="4">
+      <div class="section-header">
+        <div class="section-number">第四部分</div>
+        <div class="section-title">功能体验：息屏显示模式（AOD）</div>
+        <div class="section-desc">评价息屏后转为素描风格 + 信息挂件的设计</div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">息屏显示模式的铅笔素描滤镜效果，您的感受是？</div>
+        <div class="likert">
+          <label class="likert-item"><input type="radio" name="sketch" value="1">非常不喜欢</label>
+          <label class="likert-item"><input type="radio" name="sketch" value="2">不太喜欢</label>
+          <label class="likert-item"><input type="radio" name="sketch" value="3">一般</label>
+          <label class="likert-item"><input type="radio" name="sketch" value="4">比较喜欢</label>
+          <label class="likert-item"><input type="radio" name="sketch" value="5">非常喜欢</label>
+        </div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">息屏模式下画面的超低帧率（近乎静止），是否影响了您的体验？</div>
+        <div class="options">
+          <label class="option"><input type="radio" name="lowFps" value="没有"> 没有影响，画面像一幅画</label>
+          <label class="option"><input type="radio" name="lowFps" value="轻微"> 有轻微影响，但可以接受</label>
+          <label class="option"><input type="radio" name="lowFps" value="明显"> 明显不适，感觉画面"卡住"了</label>
+        </div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">息屏显示中信息挂件（时间、日期、天气、诗句）对您有用吗？</div>
+        <div class="options">
+          <label class="option"><input type="radio" name="widgetUseful" value="全部有用"> 全部都有用</label>
+          <label class="option"><input type="radio" name="widgetUseful" value="时间天气"> 时间和天气有用，其他不需要</label>
+          <label class="option"><input type="radio" name="widgetUseful" value="都不需要"> 都不需要，只想看画</label>
+        </div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">从息屏模式唤醒并恢复窗景的速度感受？</div>
+        <div class="q-hint">从素描画面恢复到彩色动态窗景的过渡</div>
+        <div class="options">
+          <label class="option"><input type="radio" name="wakeSpeed" value="太快"> 太快，没注意到过渡</label>
+          <label class="option"><input type="radio" name="wakeSpeed" value="刚好"> 刚好，过渡自然流畅</label>
+          <label class="option"><input type="radio" name="wakeSpeed" value="稍慢"> 稍慢，可以再快一点</label>
+          <label class="option"><input type="radio" name="wakeSpeed" value="太慢"> 太慢，感觉有等待感</label>
+        </div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">如果 A500 窗景电视长期处于息屏显示状态，您觉得它更像？</div>
+        <div class="options">
+          <label class="option"><input type="radio" name="aodFeelsLike" value="艺术品"> 一幅会呼吸的艺术品</label>
+          <label class="option"><input type="radio" name="aodFeelsLike" value="时钟"> 一个有氛围的智能时钟</label>
+          <label class="option"><input type="radio" name="aodFeelsLike" value="窗户"> 一扇真实的窗户</label>
+          <label class="option"><input type="radio" name="aodFeelsLike" value="黑屏"> 几乎没注意到它</label>
+        </div>
+      </div>
+
+      <div class="question">
+        <div class="q-text">您对息屏显示模式还有其他意见或建议吗？</div>
+        <textarea name="aodFeedback" placeholder="例如：您希望息屏时显示什么内容？对素描风格有什么改进想法？"></textarea>
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-secondary" onclick="prevSection(3)">← 上一步</button>
+        <button type="button" class="btn btn-primary" onclick="nextSection(5)">下一步 →</button>
+      </div>
+    </div>
+
+    <!-- ===== SECTION 5: 整体评价与购买意愿 ===== -->
+    <div class="section" data-section="5">
+      <div class="section-header">
+        <div class="section-number">第五部分</div>
+        <div class="section-title">整体评价与购买意愿</div>
+        <div class="section-desc">请对整个 A500 窗景产品进行综合评价</div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">A500 窗景产品的整体吸引力如何？</div>
+        <div class="slider-group">
+          <div class="slider-value" id="v2">5</div>
+          <input type="range" min="1" max="10" value="5" oninput="document.getElementById('v2').textContent=this.value">
+          <div class="slider-labels"><span>完全不感兴趣</span><span>非常想要</span></div>
+        </div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">如果 A500 窗景电视上市，您的购买意愿？</div>
+        <div class="options">
+          <label class="option"><input type="radio" name="purchase" value="一定会"> 一定会购买</label>
+          <label class="option"><input type="radio" name="purchase" value="可能会"> 可能会购买</label>
+          <label class="option"><input type="radio" name="purchase" value="不确定"> 不确定，看价格和功能</label>
+          <label class="option"><input type="radio" name="purchase" value="可能不会"> 可能不会购买</label>
+          <label class="option"><input type="radio" name="purchase" value="不会"> 不会购买</label>
+        </div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">您认为 A500 窗景最适合哪个使用场景？</div>
+        <div class="options">
+          <label class="option"><input type="radio" name="bestScene" value="客厅背景"> 客厅装饰 / 背景氛围</label>
+          <label class="option"><input type="radio" name="bestScene" value="助眠陪伴"> 卧室助眠 / 睡眠陪伴</label>
+          <label class="option"><input type="radio" name="bestScene" value="办公专注"> 办公/学习时专注背景</label>
+          <label class="option"><input type="radio" name="bestScene" value="冥想放松"> 冥想 / 放松 / 瑜伽</label>
+          <label class="option"><input type="radio" name="bestScene" value="待客展示"> 待客时展示 / 氛围营造</label>
+        </div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">以下哪些功能是您最看重的？（最多选3项）</div>
+        <div class="checkbox-grid">
+          <label class="checkbox-item"><input type="checkbox" name="topFeature" value="每日一诗"> 每日一诗的仪式感</label>
+          <label class="checkbox-item"><input type="checkbox" name="topFeature" value="智能窗景"> 随时间天气变化的窗景</label>
+          <label class="checkbox-item"><input type="checkbox" name="topFeature" value="息屏模式"> 息屏显示的艺术感</label>
+          <label class="checkbox-item"><input type="checkbox" name="topFeature" value="环境音效"> 立体环境音效</label>
+          <label class="checkbox-item"><input type="checkbox" name="topFeature" value="叙事角色"> 窗剧场叙事体验</label>
+          <label class="checkbox-item"><input type="checkbox" name="topFeature" value="无缝唤醒"> 息屏到唤醒的无缝恢复</label>
+        </div>
+      </div>
+
+      <div class="question required">
+        <div class="q-text">您能接受的 A500 窗景电视的价格区间是？</div>
+        <div class="options">
+          <label class="option"><input type="radio" name="price" value="5K以下"> 5,000 元以下</label>
+          <label class="option"><input type="radio" name="price" value="5K-8K"> 5,000 - 8,000 元</label>
+          <label class="option"><input type="radio" name="price" value="8K-12K"> 8,000 - 12,000 元</label>
+          <label class="option"><input type="radio" name="price" value="12K-15K"> 12,000 - 15,000 元</label>
+          <label class="option"><input type="radio" name="price" value="15K以上"> 15,000 元以上</label>
+        </div>
+      </div>
+
+      <div class="question">
+        <div class="q-text">请用一句话描述您对 A500 窗景的印象</div>
+        <textarea name="oneLiner" placeholder="例如："一扇有生命的窗"、"数字时代的壁炉"…" rows="2"></textarea>
+      </div>
+
+      <div class="question">
+        <div class="q-text">您还有其他想说的吗？</div>
+        <textarea name="otherFeedback" placeholder="任何想法、建议、批评都可以"></textarea>
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-secondary" onclick="prevSection(4)">← 上一步</button>
+        <button type="button" class="btn btn-primary" onclick="submitSurvey()">提交问卷</button>
+      </div>
+    </div>
+
+    <!-- ===== THANK YOU ===== -->
+    <div class="section" data-section="thanks">
+      <div class="thank-you">
+        <div class="icon">✦</div>
+        <h2>感谢您的反馈</h2>
+        <p>您的每一条意见都将帮助 A500 窗景变得更好。</p>
+      </div>
+
+      <div id="summaryContainer" style="margin-top: 32px;">
+        <h3 style="font-size: 16px; margin-bottom: 12px;">您的回答摘要</h3>
+        <table class="summary-table" id="summaryTable">
+          <thead><tr><th>问题</th><th>您的回答</th></tr></thead>
+          <tbody id="summaryBody"></tbody>
+        </table>
+      </div>
+
+      <div class="nav-buttons" style="justify-content: center;">
+        <button type="button" class="btn btn-secondary" onclick="exportResults()">导出 JSON 数据</button>
+      </div>
+    </div>
+
+  </form>
+</div>
+
+<script>
+// ============================================
+// NAVIGATION
+// ============================================
+let currentSection = 1;
+const totalSections = 5;
+
+function showSection(num) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  const target = document.querySelector(`[data-section="${num}"]`);
+  if (target) target.classList.add('active');
+  currentSection = num;
+  updateProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function nextSection(num) {
+  showSection(num);
+}
+
+function prevSection(num) {
+  showSection(num);
+}
+
+function updateProgress() {
+  const pct = currentSection <= totalSections
+    ? ((currentSection - 1) / totalSections * 100)
+    : 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+// ============================================
+// OPTION SELECTION HIGHLIGHT
+// ============================================
+document.querySelectorAll('.option, .checkbox-item, .likert-item').forEach(item => {
+  item.addEventListener('click', function() {
+    const input = this.querySelector('input');
+    if (input.type === 'checkbox') {
+      this.classList.toggle('selected');
+    } else if (input.type === 'radio') {
+      const name = input.name;
+      document.querySelectorAll(`[name="${name}"]`).forEach(radio => {
+        radio.closest('.option, .likert-item')?.classList.remove('selected');
+      });
+      this.classList.add('selected');
+    }
+  });
+});
+
+// ============================================
+// SUBMIT
+// ============================================
+function submitSurvey() {
+  const form = document.getElementById('surveyForm');
+  const formData = new FormData(form);
+  const results = {};
+
+  for (let [key, value] of formData.entries()) {
+    if (results[key]) {
+      if (Array.isArray(results[key])) {
+        results[key].push(value);
+      } else {
+        results[key] = [results[key], value];
+      }
+    } else {
+      results[key] = value;
+    }
+  }
+
+  // Collect checkbox groups
+  document.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+    if (!results[cb.name]) results[cb.name] = [];
+    if (!Array.isArray(results[cb.name])) results[cb.name] = [results[cb.name]];
+    results[cb.name].push(cb.value);
+  });
+
+  // Build summary
+  const questionMap = {
+    age: '年龄段', living: '居住环境', tvtime: '每日看电视时长',
+    poem: '每日一诗感受', poemPace: '诗词展示节奏', poemSound: '诗词音效',
+    poemPref: '诗词功能偏好', v1: '窗景美感评分',
+    lightChange: '光影变化自然度', weatherRealism: '天气真实感',
+    narrative: '叙事角色看法', wishContent: '希望增加的屏景',
+    screensaverFeedback: '屏保其他建议',
+    sketch: '素描滤镜感受', lowFps: '低帧率影响',
+    widgetUseful: '信息挂件有用性', wakeSpeed: '唤醒速度感受',
+    aodFeelsLike: '息屏像什么', aodFeedback: 'AOD其他建议',
+    v2: '整体吸引力', purchase: '购买意愿',
+    bestScene: '最适合场景', topFeature: '最看重功能',
+    price: '可接受价格', oneLiner: '一句话印象',
+    otherFeedback: '其他反馈'
+  };
+
+  const tbody = document.getElementById('summaryBody');
+  tbody.innerHTML = '';
+  for (const [key, value] of Object.entries(results)) {
+    const q = questionMap[key] || key;
+    const v = Array.isArray(value) ? value.join('、') : value;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${q}</td><td class="answer">${v}</td>`;
+    tbody.appendChild(tr);
+  }
+
+  showSection('thanks');
+  updateProgress();
+
+  // Log results
+  console.log('Survey Results:', JSON.stringify(results, null, 2));
+}
+
+function exportResults() {
+  const form = document.getElementById('surveyForm');
+  const formData = new FormData(form);
+  const results = {};
+  for (let [key, value] of formData.entries()) {
+    if (results[key]) {
+      if (!Array.isArray(results[key])) results[key] = [results[key]];
+      results[key].push(value);
+    } else {
+      results[key] = value;
+    }
+  }
+  document.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+    if (!results[cb.name]) results[cb.name] = [];
+    if (!Array.isArray(results[cb.name])) results[cb.name] = [results[cb.name]];
+    results[cb.name].push(cb.value);
+  });
+
+  const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'A500-问卷反馈_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+updateProgress();
+</script>
+</body>
+</html>

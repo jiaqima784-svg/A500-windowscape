@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A500 窗景｜息屏模式与空间场景 Demo</title>
+  <style>
+    :root {
+      --bg: #07090f;
+      --panel: rgba(255, 255, 255, 0.08);
+      --panel-strong: rgba(255, 255, 255, 0.14);
+      --border: rgba(255, 255, 255, 0.16);
+      --text: rgba(255, 255, 255, 0.92);
+      --text-2: rgba(255, 255, 255, 0.68);
+      --text-3: rgba(255, 255, 255, 0.42);
+      --blue: #8cc7ff;
+      --blue-2: #58aaff;
+      --green: #78f1bd;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+      --blur: 22px;
+      --radius: 26px;
+      --ease: cubic-bezier(.22,.8,.2,1);
+      --tv-ratio: 16 / 9;
+      --widget-opacity: .96;
+      --aod-brightness: .85;
+      --space-depth: 28px;
+      --space-aura: .55;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(75, 123, 255, .16), transparent 24%),
+        radial-gradient(circle at 82% 22%, rgba(81, 229, 176, .12), transparent 20%),
+        radial-gradient(circle at 50% 90%, rgba(255, 255, 255, .05), transparent 28%),
+        #06070b;
+      color: var(--text);
+      font-family: "SF Pro Display", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .app-shell {
+      position: relative;
+      width: min(96vw, 1700px);
+      height: min(92vh, 980px);
+      border-radius: 34px;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+      box-shadow: 0 50px 120px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(8px);
+    }
+
+    .ambient-glow {
+      position: absolute;
+      inset: -20%;
+      background:
+        radial-gradient(circle at 24% 40%, rgba(64, 136, 255, .18), transparent 25%),
+        radial-gradient(circle at 76% 36%, rgba(255,255,255,.06), transparent 20%),
+        radial-gradient(circle at 60% 85%, rgba(0, 167, 255, .12), transparent 25%);
+      pointer-events: none;
+      filter: blur(40px);
+      opacity: .9;
+    }
+
+    .demo-layout {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 0;
+    }
+
+    .stage-wrap {
+      position: relative;
+      min-width: 0;
+      height: 100%;
+      padding: 26px 20px 26px 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tv-stage {
+      position: relative;
+      width: 100%;
+      aspect-ratio: var(--tv-ratio);
+      max-height: 100%;
+      border-radius: 28px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: var(--shadow), inset 0 0 0 1px rgba(255,255,255,.08);
+      isolation: isolate;
+      cursor: pointer;
+      transform-style: preserve-3d;
+    }
+
+    .tv-bezel {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 16;
+      border-radius: 28px;
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.18),
+        inset 0 0 0 14px rgba(255,255,255,.05),
+        inset 0 0 0 18px rgba(0,0,0,.68);
+    }
+
+    .glass-reflection {
+      position: absolute;
+      inset: 0;
+      z-index: 9;
+      pointer-events: none;
+      background:
+        linear-gradient(115deg, rgba(255,255,255,.14), rgba(255,255,255,0) 18%),
+        linear-gradient(180deg, rgba(255,255,255,.06), transparent 22%, transparent 78%, rgba(255,255,255,.05));
+      mix-blend-mode: screen;
+      opacity: .38;
+    }
+
+    .video-layer,
+    .aod-layer,
+    .black-layer,
+    .space-overlay,
+    .hud-layer {
+      position: absolute;
+      inset: 0;
+    }
+
+    .video-layer {
+      z-index: 1;
+      background: #000;
+      overflow: hidden;
+    }
+
+    .window-video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity .55s var(--ease), transform 1.2s var(--ease), filter .7s var(--ease);
+      transform: scale(1.01);
+      filter: saturate(1.04) contrast(1.04);
+      background: #000;
+    }
+
+    .window-video.active {
+      opacity: 1;
+    }
+
+    .stage-is-aod .window-video {
+      filter: grayscale(.92) contrast(1.4) brightness(.25) saturate(.06);
+      transform: scale(1.025);
+    }
+
+    .space-overlay {
+      z-index: 5;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .6s var(--ease);
+    }
+
+    .space-overlay::before,
+    .space-overlay::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+    }
+
+    .space-overlay::before {
+      background:
+        radial-gradient(circle at 50% 54%, rgba(108, 183, 255, calc(var(--space-aura) * .34)), transparent 24%),
+        radial-gradient(circle at 50% 80%, rgba(255,255,255,.07), transparent 28%),
+        linear-gradient(90deg, rgba(255,255,255,.05), transparent 16%, transparent 84%, rgba(255,255,255,.05));
+      filter: blur(12px);
+    }
+
+    .space-overlay::after {
+      background:
+        linear-gradient(180deg, rgba(10, 15, 30, .08), transparent 18%, transparent 78%, rgba(6, 11, 28, .18)),
+        radial-gradient(circle at 50% 50%, transparent 48%, rgba(0,0,0,.16) 100%);
+    }
+
+    .stage-is-space .space-overlay {
+      opacity: 1;
+    }
+
+    .depth-plane {
+      position: absolute;
+      inset: -3%;
+      z-index: 4;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateZ(0);
+      transition: opacity .6s var(--ease), transform .6s var(--ease);
+      background:
+        radial-gradient(circle at 25% 20%, rgba(255,255,255,.08), transparent 15%),
+        radial-gradient(circle at 78% 26%, rgba(140, 198, 255, .14), transparent 18%),
+        linear-gradient(180deg, rgba(255,255,255,.06), transparent 22%);
+      mix-blend-mode: screen;
+      filter: blur(16px);
+    }
+
+    .stage-is-space .depth-plane {
+      opacity: .84;
+      transform: translate3d(0, 0, 40px) scale(1.04);
+    }
+
+    .window-frame-svg {
+      position: absolute;
+      inset: 0;
+      z-index: 7;
+      pointer-events: none;
+      opacity: .32;
+      transition: opacity .45s var(--ease);
+    }
+
+    .stage-is-aod .window-frame-svg {
+      opacity: .66;
+    }
+
+    .aod-layer {
+      z-index: 6;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .55s var(--ease);
+      background:
+        radial-gradient(circle at 50% 18%, rgba(255,255,255,.05), transparent 20%),
+        linear-gradient(180deg, rgba(0,0,0,.1), rgba(0,0,0,.42));
+    }
+
+    .aod-mode-image,
+    .aod-mode-live {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: opacity .35s var(--ease), filter .45s var(--ease);
+    }
+
+    .aod-mode-image {
+      opacity: 1;
+      filter: brightness(var(--aod-brightness)) contrast(1.05);
+    }
+
+    .aod-mode-live {
+      opacity: 0;
+      background:
+        linear-gradient(180deg, rgba(0,0,0,.16), rgba(0,0,0,.52)),
+        radial-gradient(circle at 82% 16%, rgba(255,255,255,.08), transparent 16%);
+      mix-blend-mode: screen;
+      filter: grayscale(1) contrast(1.5) brightness(.32) saturate(.04);
+    }
+
+    .aod-style-live .aod-mode-image {
+      opacity: 0;
+    }
+
+    .aod-style-live .aod-mode-live {
+      opacity: 1;
+    }
+
+    .stage-is-aod .aod-layer {
+      opacity: 1;
+    }
+
+    .stage-is-aod.stage-is-space .aod-layer {
+      opacity: .96;
+    }
+
+    .aod-widget {
+      position: absolute;
+      right: 42px;
+      bottom: 28px;
+      min-width: 280px;
+      padding: 16px 22px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.26);
+      background: rgba(7, 7, 10, .58);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.24), 0 18px 38px rgba(0,0,0,.35);
+      color: rgba(255,255,255,var(--widget-opacity));
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: opacity .35s var(--ease), transform .35s var(--ease);
+    }
+
+    .aod-widget[hidden] {
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+    }
+
+    .aod-time-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .aod-time {
+      font-size: 56px;
+      line-height: 1;
+      font-weight: 300;
+      letter-spacing: 1px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .aod-weather-icon {
+      font-size: 42px;
+      line-height: 1;
+      opacity: .92;
+    }
+
+    .aod-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      color: rgba(255,255,255,.88);
+      font-size: 22px;
+      font-weight: 400;
+    }
+
+    .aod-meta small {
+      font-size: 20px;
+      color: rgba(255,255,255,.7);
+    }
+
+    .black-layer {
+      z-index: 8;
+      pointer-events: none;
+      background: #000;
+      opacity: 0;
+      transition: opacity .45s var(--ease);
+    }
+
+    .stage-is-black .black-layer {
+      opacity: 1;
+    }
+
+    .stage-is-black .aod-layer,
+    .stage-is-black .space-overlay,
+    .stage-is-black .depth-plane,
+    .stage-is-black .window-frame-svg,
+    .stage-is-black .hud-layer,
+    .stage-is-black .glass-reflection {
+      opacity: 0;
+    }
+
+    .hud-layer {
+      z-index: 10;
+      pointer-events: none;
+      padding: 22px 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .scene-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+    }
+
+    .status-pills,
+    .shortcut-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(14px);
+      color: rgba(255,255,255,.78);
+      font-size: 13px;
+      letter-spacing: .2px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    }
+
+    .pill strong {
+      font-weight: 600;
+      color: rgba(255,255,255,.96);
+    }
+
+    .pill-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 10px rgba(120,241,189,.75);
+    }
+
+    .scene-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 18px;
+    }
+
+    .scene-caption {
+      max-width: 520px;
+      padding: 18px 20px;
+      border-radius: 22px;
+      background: rgba(8,12,20,.24);
+      border: 1px solid rgba(255,255,255,.1);
+      backdrop-filter: blur(18px);
+      color: rgba(255,255,255,.84);
+      font-size: 14px;
+      line-height: 1.6;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    }
+
+    .scene-caption span {
+      display: block;
+      color: rgba(255,255,255,.52);
+      margin-bottom: 6px;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+
+    .cta-stack {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .ios-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 50px;
+      padding: 0 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 12px 30px rgba(0,0,0,.3);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: .2px;
+      cursor: pointer;
+      transition: transform .24s var(--ease), background .24s var(--ease), border-color .24s var(--ease), opacity .24s var(--ease);
+      user-select: none;
+    }
+
+    .ios-btn:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.14);
+    }
+
+    .ios-btn:active {
+      transform: translateY(1px) scale(.99);
+    }
+
+    .ios-btn.primary {
+      background: linear-gradient(180deg, rgba(116,181,255,.28), rgba(61,126,255,.24));
+      border-color: rgba(140,199,255,.32);
+    }
+
+    .ios-btn.ghost {
+      background: rgba(8,12,18,.44);
+    }
+
+    .ios-btn[aria-pressed="true"] {
+      background: linear-gradient(180deg, rgba(129,208,255,.38), rgba(72,134,255,.24));
+      border-color: rgba(155,219,255,.46);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 18px 36px rgba(28,105,255,.25);
+    }
+
+    .scene-space-btn {
+      min-width: 188px;
+    }
+
+    .corner-hint {
+      padding: 0 14px;
+      height: 50px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(6,8,12,.42);
+      border: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(18px);
+      color: rgba(255,255,255,.62);
+      font-size: 12px;
+      letter-spacing: .2px;
+      pointer-events: none;
+    }
+
+    .sidebar {
+      position: relative;
+      height: 100%;
+      padding: 18px 18px 18px 0;
+      display: flex;
+      align-items: stretch;
+    }
+
+    .sidebar-panel {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 30px 0 0 30px;
+      padding: 22px 18px 22px 18px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06)),
+        rgba(9, 12, 18, .62);
+      border-left: 1px solid rgba(255,255,255,.12);
+      border-top: 1px solid rgba(255,255,255,.08);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      box-shadow: inset 1px 0 0 rgba(255,255,255,.08);
+      backdrop-filter: blur(var(--blur)) saturate(150%);
+      -webkit-backdrop-filter: blur(var(--blur)) saturate(150%);
+      overflow: auto;
+    }
+
+    .sidebar-panel::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .sidebar-panel::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,.12);
+      border-radius: 999px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .panel-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: .2px;
+    }
+
+    .panel-subtitle {
+      color: var(--text-2);
+      font-size: 12px;
+      line-height: 1.55;
+      margin-top: 6px;
+    }
+
+    .panel-section {
+      margin-top: 14px;
+      padding: 16px;
+      border-radius: 24px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .section-title h3 {
+      font-size: 15px;
+      font-weight: 650;
+    }
+
+    .section-title span {
+      color: var(--text-3);
+      font-size: 11px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+
+    .row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .row:first-child {
+      padding-top: 0;
+    }
+
+    .row-label {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .row-title {
+      font-size: 14px;
+      color: rgba(255,255,255,.92);
+    }
+
+    .row-desc {
+      margin-top: 4px;
+      color: var(--text-3);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .segmented {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .segmented button,
+    .mini-chip {
+      height: 34px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.76);
+      font-size: 12px;
+      cursor: pointer;
+      transition: .2s var(--ease);
+    }
+
+    .segmented button.active,
+    .mini-chip.active {
+      background: rgba(140,199,255,.16);
+      color: #fff;
+      border-color: rgba(140,199,255,.28);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    }
+
+    .switch {
+      position: relative;
+      width: 54px;
+      height: 32px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.08);
+      cursor: pointer;
+      transition: background .24s var(--ease);
+      flex-shrink: 0;
+    }
+
+    .switch::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+      transition: transform .24s var(--ease);
+    }
+
+    .switch.active {
+      background: linear-gradient(180deg, rgba(118,202,255,.94), rgba(53,122,255,.92));
+    }
+
+    .switch.active::after {
+      transform: translateX(21px);
+    }
+
+    .slider-box {
+      min-width: 144px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .slider-box output {
+      min-width: 38px;
+      text-align: right;
+      color: rgba(255,255,255,.72);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 120px;
+      accent-color: var(--blue);
+      cursor: pointer;
+    }
+
+    select {
+      min-width: 128px;
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.08);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.08);
+      outline: 0;
+    }
+
+    .panel-note {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(117, 202, 255, .08);
+      border: 1px solid rgba(140,199,255,.14);
+      color: rgba(255,255,255,.74);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .panel-note strong {
+      color: #fff;
+    }
+
+    .kbd {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.1);
+      font-size: 11px;
+      color: rgba(255,255,255,.68);
+    }
+
+    .bottom-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1320px) {
+      .demo-layout {
+        grid-template-columns: minmax(0, 1fr) 320px;
+      }
+      .aod-time {
+        font-size: 48px;
+      }
+      .aod-meta {
+        font-size: 20px;
+      }
+    }
+
+    @media (max-width: 1100px) {
+      .app-shell {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+      }
+
+      .demo-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: min(88vw, 360px);
+        z-index: 40;
+        padding: 16px 16px 16px 0;
+      }
+
+      .sidebar-panel {
+        border-radius: 28px 0 0 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="ambient-glow"></div>
+    <div class="demo-layout">
+      <section class="stage-wrap">
+        <div class="tv-stage" id="tvStage" aria-label="窗景 demo 主舞台">
+          <div class="video-layer" id="videoLayer">
+            <video id="videoA" class="window-video active" muted playsinline preload="auto"></video>
+            <video id="videoB" class="window-video" muted playsinline preload="auto"></video>
+          </div>
+
+          <div class="depth-plane" id="depthPlane"></div>
+          <div class="space-overlay" id="spaceOverlay"></div>
+
+          <div class="aod-layer aod-style-image" id="aodLayer">
+            <img class="aod-mode-image" src="../帆船 图/息屏demo制作/息屏模式.png" alt="息屏模式参考图" />
+            <div class="aod-mode-live"></div>
+            <div class="aod-widget" id="aodWidget">
+              <div class="aod-time-row">
+                <div class="aod-time" id="clockTime">14:35</div>
+                <div class="aod-weather-icon" id="weatherIcon">☀</div>
+              </div>
+              <div class="aod-meta">
+                <span id="clockDate">4月20日 周一</span>
+                <span><small id="weatherText">晴</small> <span id="tempText">24°C</span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="black-layer" id="blackLayer"></div>
+
+          <svg class="window-frame-svg" viewBox="0 0 1600 900" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="frameGlow" x1="0" x2="1">
+                <stop offset="0%" stop-color="rgba(255,255,255,.86)"></stop>
+                <stop offset="100%" stop-color="rgba(255,255,255,.2)"></stop>
+              </linearGradient>
+            </defs>
+            <g fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.4">
+              <rect x="48" y="34" width="1504" height="820" rx="8"></rect>
+              <rect x="74" y="58" width="1452" height="774" rx="4"></rect>
+              <path d="M92 76 L92 812 M146 76 L146 812"></path>
+              <path d="M1508 76 L1508 812"></path>
+              <path d="M48 856 L1552 856"></path>
+              <path d="M96 76 C170 142, 170 694, 96 804" opacity=".55"></path>
+              <path d="M132 76 C196 156, 198 688, 124 804" opacity=".38"></path>
+              <path d="M920 160 L1552 52" opacity=".4"></path>
+              <path d="M934 196 L1552 72" opacity=".45"></path>
+              <path d="M954 234 L1552 96" opacity=".35"></path>
+              <path d="M982 274 L1552 132" opacity=".3"></path>
+              <path d="M1020 320 L1552 172" opacity=".26"></path>
+              <path d="M1060 372 L1552 220" opacity=".2"></path>
+            </g>
+          </svg>
+
+          <div class="glass-reflection"></div>
+          <div class="tv-bezel"></div>
+
+          <div class="hud-layer">
+            <div class="scene-header">
+              <div class="status-pills">
+                <div class="pill"><span class="pill-dot"></span><strong id="stateName">窗景屏保</strong></div>
+                <div class="pill">资源循环 <strong id="loopStatus">1 → 2 → 1</strong></div>
+                <div class="pill">息屏链路 <strong id="timeoutStatus">45s → 120s</strong></div>
+              </div>
+              <div class="shortcut-pills">
+                <div class="pill">点击舞台可唤醒</div>
+                <div class="pill"><span class="kbd">1</span> 屏保</div>
+                <div class="pill"><span class="kbd">2</span> 息屏</div>
+                <div class="pill"><span class="kbd">3</span> 黑屏</div>
+              </div>
+            </div>
+
+            <div class="scene-footer">
+              <div class="scene-caption">
+                <span>A500 Window Scene Demo</span>
+                使用 `1.mp4`、`2.mp4` 无缝衔接循环播放；右侧为透色毛玻璃设置栏，可切换屏保 / 息屏显示 / 黑屏，并控制沉浸空间模式、息屏组件、亮度与超时链路。
+              </div>
+              <div class="cta-stack">
+                <div class="corner-hint" id="spaceHint">下方资源按钮：沉浸空间模式</div>
+                <button class="ios-btn primary scene-space-btn" id="spaceModeButton" aria-pressed="false">
+                  <span>沉浸空间模式</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <div class="sidebar-panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">窗景设置</div>
+              <div class="panel-subtitle">透色、毛玻璃、仿 iOS 组件风格。用于演示息屏模式与空间场景的完整交互链路。</div>
+            </div>
+            <button class="ios-btn ghost" id="toggleSidebarButton" type="button">侧栏</button>
+          </div>
+
+          <div class="panel-section">
+            <div class="section-title">
+              <h3>状态切换</h3>
+              <span>手动预览</span>
+            </div>
+            <div class="segmented" id="stateButtons">
+              <button data-mode="screensaver" class="active">进入窗景</button>
+              <button data-mode="aod">息屏显示</button>
+              <button data-mode="black">黑屏</button>
+            </div>
+            <div class="bottom-actions">
+              <button class="ios-btn ghost" id="wakeButton" type="button">任意操作唤醒</button>
+              <button class="ios-btn ghost" id="resetTimerButton" type="button">重置超时</button>
+            </div>
+          </div>
+
+          <div class="panel-section">
+            <div class="section-title">
+              <h3>进入窗景资源</h3>
+              <span>视频 1 / 2</span>
+            </div>
+            <div class="row">
+              <div class="row-label">
+                <div class="row-title">无缝循环播放</div>
+                <div class="row-desc">播放 `1.mp4` → `2.mp4`，完成后回到 `1.mp4`，双视频交叉预加载。</div>
+              </div>
+              <div class="switch active" id="loopSwitch"></div>
+            </div>
+            <div class="row">
+              <div class="row-label">
+                <div class="row-title">当前资源</div>
+                <div class="row-desc">实时显示当前正在播放的视频资源。</div>
+              </div>
+              <div class="mini-chip active" id="currentVideoChip">1.mp4</div>
+            </div>
+          </div>
+
+          <div class="panel-section">
+            <div class="section-title">
+              <h3>息屏显示</h3>
+              <span>玻璃感组件</span>
+            </div>
+            <div class="row">
+              <div class="row-label">
+                <div class="row-title">启用息屏显示</div>
+                <div class="row-desc">屏保超时后进入低功耗息屏模式。</div>
+              </div>
+              <div class="switch active" id="aodEnabledSwitch"></div>
+            </div>
+            <div class="row">
+              <div class="row-label">
+                <div class="row-title">自动进入时间</div>
+                <div class="row-desc">从屏保进入息屏显示的超时时长。</div>
+              </div>
+              <select id="aodTimeoutSelect">
+                <option value="15">15 秒</option>
+                <option value="30">30 秒</option>
+                <option value="45" selected>45 秒</option>
+                <option value="60">60 秒</option>
+              </select>
+            </div>
+            <div class="row">
+              <div class="row-label">
+                <div class="row-title">息屏显示样式</div>
+                <div class="row-desc">`线稿参考图` 对应你提供的“息屏模式.png”；`低亮视频` 更接近实时转译。</div>
+              </div>
+              <div class="segmented" id="aodStyleButtons">
+                <button data-style="image" class="active">线稿参考图</button>
+                <button data-style="live">低亮视频</button>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-label">
+                <div class="row-title">信息组件</div>
+                <div class="row-desc">右下角时间、日期、天气、温度玻璃组件。</div>
+              </div>
+              <div class="switch active" id="widgetSwitch"></div>
+            </div>
+            <div class="row">
+              <div class="row-label">
+                <div class="row-title">息屏亮度</div>
+                <div class="row-desc">控制参考图 / 低亮视频的整体亮度。</div>
+              </div>
+              <div class="slider-box">
+                <input type="range" min="45" max="110" value="85" id="aodBrightnessRange" />
+                <output id="aodBrightnessOutput">85%</output>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-section">
+            <div class="section-title">
+              <h3>黑屏层级</h3>
+              <span>最终收束</span>
+            </div>
+            <div class="row">
+              <div class="row-label">
+                <div class="row-title">启用黑屏</div>
+                <div class="row-desc">息屏显示超时后再进入全黑状态。</div>
+              </div>
+              <div class="switch active" id="blackEnabledSwitch"></div>
+            </div>
+            <div class="row">
+              <div class="row-label">
+                <div class="row-title">黑屏延时</div>
+                <div class="row-desc">从息屏显示进入黑屏的附加时间。</div>
+              </div>
+              <select id="blackTimeoutSelect">
+                <option value="30">30 秒</option>
+                <option value="60">60 秒</option>
+                <option value="120" selected>120 秒</option>
+                <option value="180">180 秒</option>
+                <option value="0">不进入黑屏</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="panel-section">
+            <div class="section-title">
+              <h3>沉浸空间模式</h3>
+              <span>入口在资源右下角</span>
+            </div>
+            <div class="row">
+              <div class="row-label">
+                <div class="row-title">启用空间场景</div>
+                <div class="row-desc">增强纵深、氛围光和沉浸感；按钮位于窗景资源右下角。</div>
+              </div>
+              <div class="switch" id="spaceSwitch"></div>
+            </div>
+            <div class="row">
+              <div class="row-label">
+                <div class="row-title">纵深强度</div>
+                <div class="row-desc">前中后景拉开的幅度。</div>
+              </div>
+              <div class="slider-box">
+                <input type="range" min="8" max="60" value="28" id="spaceDepthRange" />
+                <output id="spaceDepthOutput">28px</output>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-label">
+                <div class="row-title">氛围光强度</div>
+                <div class="row-desc">决定空间感 halo 的明暗。</div>
+              </div>
+              <div class="slider-box">
+                <input type="range" min="10" max="100" value="55" id="spaceAuraRange" />
+                <output id="spaceAuraOutput">55%</output>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-note">
+            <strong>Demo 逻辑说明：</strong><br />
+            1）默认进入窗景播放视频 1、2，无缝衔接循环；<br />
+            2）右侧菜单可手动切换屏保 / 息屏 / 黑屏；<br />
+            3）屏保右下角按钮用于开启 <strong>沉浸空间模式</strong>；<br />
+            4）任意点击舞台或点击“任意操作唤醒”，会恢复到最高已开启状态。
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const assetPaths = [
+      "../1.mp4",
+      "../2.mp4"
+    ];
+
+    const tvStage = document.getElementById("tvStage");
+    const videoA = document.getElementById("videoA");
+    const videoB = document.getElementById("videoB");
+    const aodLayer = document.getElementById("aodLayer");
+    const aodWidget = document.getElementById("aodWidget");
+    const currentVideoChip = document.getElementById("currentVideoChip");
+    const stateName = document.getElementById("stateName");
+    const loopStatus = document.getElementById("loopStatus");
+    const timeoutStatus = document.getElementById("timeoutStatus");
+    const spaceModeButton = document.getElementById("spaceModeButton");
+
+    const stateButtons = [...document.querySelectorAll("#stateButtons button")];
+    const aodStyleButtons = [...document.querySelectorAll("#aodStyleButtons button")];
+
+    const controls = {
+      loopSwitch: document.getElementById("loopSwitch"),
+      aodEnabledSwitch: document.getElementById("aodEnabledSwitch"),
+      widgetSwitch: document.getElementById("widgetSwitch"),
+      blackEnabledSwitch: document.getElementById("blackEnabledSwitch"),
+      spaceSwitch: document.getElementById("spaceSwitch"),
+      aodTimeoutSelect: document.getElementById("aodTimeoutSelect"),
+      blackTimeoutSelect: document.getElementById("blackTimeoutSelect"),
+      aodBrightnessRange: document.getElementById("aodBrightnessRange"),
+      aodBrightnessOutput: document.getElementById("aodBrightnessOutput"),
+      aodStyleButtons,
+      spaceDepthRange: document.getElementById("spaceDepthRange"),
+      spaceDepthOutput: document.getElementById("spaceDepthOutput"),
+      spaceAuraRange: document.getElementById("spaceAuraRange"),
+      spaceAuraOutput: document.getElementById("spaceAuraOutput"),
+      wakeButton: document.getElementById("wakeButton"),
+      resetTimerButton: document.getElementById("resetTimerButton"),
+      toggleSidebarButton: document.getElementById("toggleSidebarButton")
+    };
+
+    const weatherPool = [
+      { icon: "☀", label: "晴", temp: "24°C" },
+      { icon: "☁", label: "阴", temp: "21°C" },
+      { icon: "🌤", label: "多云", temp: "22°C" },
+      { icon: "🌧", label: "小雨", temp: "19°C" }
+    ];
+
+    const appState = {
+      mode: "screensaver",
+      loopEnabled: true,
+      aodEnabled: true,
+      widgetEnabled: true,
+      blackEnabled: true,
+      immersiveEnabled: false,
+      aodStyle: "image",
+      aodTimeout: 45,
+      blackTimeout: 120,
+      aodBrightness: 85,
+      lastInteraction: Date.now(),
+      playlistIndex: 0,
+      nextIndex: 1,
+      activeSlot: 0,
+      transitionLock: false,
+      spaceDepth: 28,
+      spaceAura: 55,
+      weatherIndex: 0
+    };
+
+    const videoSlots = [videoA, videoB];
+
+    function setVideoSource(video, src) {
+      if (video.dataset.src === src) return;
+      video.pause();
+      video.dataset.src = src;
+      video.src = src;
+      video.load();
+    }
+
+    function preloadVideos() {
+      setVideoSource(videoSlots[0], assetPaths[0]);
+      setVideoSource(videoSlots[1], assetPaths[1]);
+      videoSlots[0].currentTime = 0;
+      videoSlots[0].play().catch(() => {});
+      currentVideoChip.textContent = "1.mp4";
+    }
+
+    function markInteraction(shouldWake = false) {
+      appState.lastInteraction = Date.now();
+      if (shouldWake) {
+        wakeToHighestState();
+      }
+    }
+
+    function wakeToHighestState() {
+      if (appState.mode === "screensaver") return;
+      if (appState.aodEnabled || appState.loopEnabled) {
+        setMode("screensaver");
+      } else if (appState.aodEnabled) {
+        setMode("aod");
+      } else if (appState.blackEnabled) {
+        setMode("black");
+      }
+    }
+
+    function applyStageClasses() {
+      tvStage.classList.toggle("stage-is-aod", appState.mode === "aod");
+      tvStage.classList.toggle("stage-is-black", appState.mode === "black");
+      tvStage.classList.toggle("stage-is-space", appState.immersiveEnabled && appState.mode !== "black");
+      aodLayer.classList.toggle("aod-style-live", appState.aodStyle === "live");
+      aodWidget.hidden = !appState.widgetEnabled || appState.aodStyle === "image";
+      stateButtons.forEach(btn => btn.classList.toggle("active", btn.dataset.mode === appState.mode));
+      aodStyleButtons.forEach(btn => btn.classList.toggle("active", btn.dataset.style === appState.aodStyle));
+      spaceModeButton.setAttribute("aria-pressed", String(appState.immersiveEnabled));
+      controls.spaceSwitch.classList.toggle("active", appState.immersiveEnabled);
+      stateName.textContent = appState.mode === "screensaver"
+        ? "窗景屏保"
+        : appState.mode === "aod"
+          ? "息屏显示"
+          : "黑屏";
+    }
+
+    function setMode(mode) {
+      appState.mode = mode;
+      applyStageClasses();
+    }
+
+    function updateConfigSummary() {
+      timeoutStatus.textContent = `${appState.aodTimeout}s → ${appState.blackEnabled && appState.blackTimeout > 0 ? `${appState.blackTimeout}s` : "保持当前"}`;
+      loopStatus.textContent = appState.loopEnabled ? "1 → 2 → 1" : "已暂停循环";
+      controls.aodBrightnessOutput.textContent = `${appState.aodBrightness}%`;
+      controls.spaceDepthOutput.textContent = `${appState.spaceDepth}px`;
+      controls.spaceAuraOutput.textContent = `${appState.spaceAura}%`;
+    }
+
+    function updateCssVars() {
+      document.documentElement.style.setProperty("--aod-brightness", (appState.aodBrightness / 100).toFixed(2));
+      document.documentElement.style.setProperty("--space-depth", `${appState.spaceDepth}px`);
+      document.documentElement.style.setProperty("--space-aura", (appState.spaceAura / 100).toFixed(2));
+    }
+
+    function toggleSwitch(element, active) {
+      element.classList.toggle("active", active);
+    }
+
+    function setImmersiveMode(active) {
+      appState.immersiveEnabled = active;
+      toggleSwitch(controls.spaceSwitch, active);
+      spaceModeButton.setAttribute("aria-pressed", String(active));
+      applyStageClasses();
+    }
+
+    function switchToNextVideo() {
+      if (!appState.loopEnabled || appState.transitionLock || appState.mode !== "screensaver") return;
+
+      appState.transitionLock = true;
+      const outgoingSlotIndex = appState.activeSlot;
+      const incomingSlotIndex = outgoingSlotIndex === 0 ? 1 : 0;
+      const outgoing = videoSlots[outgoingSlotIndex];
+      const incoming = videoSlots[incomingSlotIndex];
+
+      const incomingSource = assetPaths[appState.nextIndex];
+      setVideoSource(incoming, incomingSource);
+
+      const startIncoming = () => {
+        incoming.currentTime = 0;
+        incoming.play().then(() => {
+          incoming.classList.add("active");
+          outgoing.classList.remove("active");
+
+          setTimeout(() => {
+            outgoing.pause();
+            appState.activeSlot = incomingSlotIndex;
+            appState.playlistIndex = appState.nextIndex;
+            appState.nextIndex = (appState.nextIndex + 1) % assetPaths.length;
+            currentVideoChip.textContent = `${appState.playlistIndex + 1}.mp4`;
+
+            const preloadIndex = outgoingSlotIndex;
+            const preloadVideo = videoSlots[preloadIndex];
+            const preloadSource = assetPaths[appState.nextIndex];
+            setVideoSource(preloadVideo, preloadSource);
+            appState.transitionLock = false;
+          }, 520);
+        }).catch(() => {
+          appState.transitionLock = false;
+        });
+      };
+
+      if (incoming.readyState >= 3) {
+        startIncoming();
+      } else {
+        incoming.addEventListener("canplay", startIncoming, { once: true });
+      }
+    }
+
+    function onVideoTimeUpdate(event) {
+      const activeVideo = videoSlots[appState.activeSlot];
+      if (event.target !== activeVideo) return;
+      if (!activeVideo.duration || appState.transitionLock) return;
+
+      const remaining = activeVideo.duration - activeVideo.currentTime;
+      if (remaining < 0.45) {
+        switchToNextVideo();
+      }
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const hour = String(now.getHours()).padStart(2, "0");
+      const minute = String(now.getMinutes()).padStart(2, "0");
+      document.getElementById("clockTime").textContent = `${hour}:${minute}`;
+
+      const weekMap = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+      document.getElementById("clockDate").textContent = `${now.getMonth() + 1}月${now.getDate()}日 ${weekMap[now.getDay()]}`;
+
+      if (now.getSeconds() % 20 === 0) {
+        appState.weatherIndex = (appState.weatherIndex + 1) % weatherPool.length;
+      }
+      const weather = weatherPool[appState.weatherIndex];
+      document.getElementById("weatherIcon").textContent = weather.icon;
+      document.getElementById("weatherText").textContent = weather.label;
+      document.getElementById("tempText").textContent = weather.temp;
+    }
+
+    function tickStateMachine() {
+      const idleSeconds = Math.floor((Date.now() - appState.lastInteraction) / 1000);
+
+      if (appState.mode === "screensaver" && appState.aodEnabled && idleSeconds >= appState.aodTimeout) {
+        setMode("aod");
+      }
+
+      if (
+        appState.mode === "aod" &&
+        appState.blackEnabled &&
+        appState.blackTimeout > 0 &&
+        idleSeconds >= (appState.aodTimeout + appState.blackTimeout)
+      ) {
+        setMode("black");
+      }
+    }
+
+    function bindUI() {
+      stateButtons.forEach(button => {
+        button.addEventListener("click", () => {
+          markInteraction();
+          setMode(button.dataset.mode);
+        });
+      });
+
+      aodStyleButtons.forEach(button => {
+        button.addEventListener("click", () => {
+          appState.aodStyle = button.dataset.style;
+          applyStageClasses();
+        });
+      });
+
+      controls.loopSwitch.addEventListener("click", () => {
+        appState.loopEnabled = !appState.loopEnabled;
+        toggleSwitch(controls.loopSwitch, appState.loopEnabled);
+        updateConfigSummary();
+        if (appState.loopEnabled && appState.mode === "screensaver") {
+          const activeVideo = videoSlots[appState.activeSlot];
+          activeVideo.play().catch(() => {});
+        }
+      });
+
+      controls.aodEnabledSwitch.addEventListener("click", () => {
+        appState.aodEnabled = !appState.aodEnabled;
+        toggleSwitch(controls.aodEnabledSwitch, appState.aodEnabled);
+      });
+
+      controls.widgetSwitch.addEventListener("click", () => {
+        appState.widgetEnabled = !appState.widgetEnabled;
+        toggleSwitch(controls.widgetSwitch, appState.widgetEnabled);
+        applyStageClasses();
+      });
+
+      controls.blackEnabledSwitch.addEventListener("click", () => {
+        appState.blackEnabled = !appState.blackEnabled;
+        toggleSwitch(controls.blackEnabledSwitch, appState.blackEnabled);
+        updateConfigSummary();
+      });
+
+      controls.spaceSwitch.addEventListener("click", () => {
+        markInteraction();
+        setImmersiveMode(!appState.immersiveEnabled);
+      });
+
+      spaceModeButton.addEventListener("click", () => {
+        markInteraction();
+        setImmersiveMode(!appState.immersiveEnabled);
+      });
+
+      controls.aodTimeoutSelect.addEventListener("change", (event) => {
+        appState.aodTimeout = Number(event.target.value);
+        markInteraction();
+        updateConfigSummary();
+      });
+
+      controls.blackTimeoutSelect.addEventListener("change", (event) => {
+        appState.blackTimeout = Number(event.target.value);
+        markInteraction();
+        updateConfigSummary();
+      });
+
+      controls.aodBrightnessRange.addEventListener("input", (event) => {
+        appState.aodBrightness = Number(event.target.value);
+        updateConfigSummary();
+        updateCssVars();
+      });
+
+      controls.spaceDepthRange.addEventListener("input", (event) => {
+        appState.spaceDepth = Number(event.target.value);
+        updateConfigSummary();
+        updateCssVars();
+      });
+
+      controls.spaceAuraRange.addEventListener("input", (event) => {
+        appState.spaceAura = Number(event.target.value);
+        updateConfigSummary();
+        updateCssVars();
+      });
+
+      controls.wakeButton.addEventListener("click", () => {
+        markInteraction(true);
+      });
+
+      controls.resetTimerButton.addEventListener("click", () => {
+        markInteraction();
+      });
+
+      controls.toggleSidebarButton.addEventListener("click", () => {
+        document.querySelector(".sidebar").classList.toggle("hidden");
+      });
+
+      tvStage.addEventListener("click", () => markInteraction(true));
+
+      ["mousemove", "keydown", "pointerdown", "touchstart"].forEach(eventName => {
+        window.addEventListener(eventName, () => markInteraction(false), { passive: true });
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "1") setMode("screensaver");
+        if (event.key === "2") setMode("aod");
+        if (event.key === "3") setMode("black");
+        if (event.key.toLowerCase() === "i") setImmersiveMode(!appState.immersiveEnabled);
+      });
+    }
+
+    function initVideos() {
+      videoSlots.forEach(video => {
+        video.muted = true;
+        video.loop = false;
+        video.playsInline = true;
+        video.addEventListener("timeupdate", onVideoTimeUpdate);
+        video.addEventListener("ended", switchToNextVideo);
+      });
+      preloadVideos();
+    }
+
+    function init() {
+      initVideos();
+      bindUI();
+      updateClock();
+      updateConfigSummary();
+      updateCssVars();
+      applyStageClasses();
+      toggleSwitch(controls.loopSwitch, appState.loopEnabled);
+      toggleSwitch(controls.aodEnabledSwitch, appState.aodEnabled);
+      toggleSwitch(controls.widgetSwitch, appState.widgetEnabled);
+      toggleSwitch(controls.blackEnabledSwitch, appState.blackEnabled);
+      setInterval(updateClock, 1000);
+      setInterval(tickStateMachine, 1000);
+    }
+
+    init();
+  </script>
+</body>
+</html>

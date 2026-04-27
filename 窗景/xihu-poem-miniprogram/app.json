@@ -1,0 +1,19 @@
+{
+  "pages": [
+    "pages/index/index"
+  ],
+  "window": {
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#0a1628",
+    "navigationBarTitleText": "西湖窗景",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#0a1628"
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "获取位置信息用于显示当地天气"
+    }
+  },
+  "requiredBackgroundModes": ["audio"],
+  "lazyCodeLoading": "requiredComponents"
+}

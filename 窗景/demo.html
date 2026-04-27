@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A500 窗景 — 一扇懂你的智能窗</title>
+<style>
+/* ============ RESET & BASE ============ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+@font-face { font-family: 'DisplayFont'; src: local('Source Han Serif SC'), local('思源宋体'), local('STSong'), local('SimSun'), local('Noto Serif CJK SC'); }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'DisplayFont', 'STSong', 'SimSun', serif; }
+
+/* ============ MAIN STAGE ============ */
+#stage {
+  position: relative; width: 100vw; height: 100vh;
+  overflow: hidden;
+}
+
+/* ============ SCENE LAYERS ============ */
+.scene-layer {
+  position: absolute; inset: 0;
+  transition: opacity 2s ease;
+}
+
+/* Sky gradient */
+.sky {
+  z-index: 1;
+  background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 40%, #87CEEB 60%, #4682B4 100%);
+}
+/* Time-based sky colors */
+body[data-time="dawn"] .sky { background: linear-gradient(180deg, #FF7F50 0%, #FFA07A 30%, #FFDAB9 60%, #87CEEB 100%); }
+body[data-time="day"] .sky { background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 40%, #87CEEB 60%, #4682B4 100%); }
+body[data-time="dusk"] .sky { background: linear-gradient(180deg, #FF6347 0%, #FF4500 25%, #FF8C00 50%, #4169E1 100%); }
+body[data-time="night"] .sky { background: linear-gradient(180deg, #0C1445 0%, #1B1F3B 40%, #2C3E6B 70%, #1a1a2e 100%); }
+
+/* Season tint */
+body[data-season="spring"] .sky { filter: saturate(1.1) brightness(1.05); }
+body[data-season="summer"] .sky { filter: saturate(1.2) brightness(1.1); }
+body[data-season="autumn"] .sky { filter: saturate(0.9) sepia(0.15); }
+body[data-season="winter"] .sky { filter: saturate(0.7) brightness(0.9); }
+
+/* Mountains */
+.mountains {
+  z-index: 2;
+  background:
+    radial-gradient(ellipse 120% 40% at 20% 85%, rgba(100,120,100,0.6) 0%, transparent 70%),
+    radial-gradient(ellipse 80% 35% at 60% 80%, rgba(80,100,80,0.5) 0%, transparent 70%),
+    radial-gradient(ellipse 100% 30% at 80% 78%, rgba(90,110,90,0.4) 0%, transparent 70%);
+}
+body[data-season="autumn"] .mountains {
+  background:
+    radial-gradient(ellipse 120% 40% at 20% 85%, rgba(160,100,50,0.6) 0%, transparent 70%),
+    radial-gradient(ellipse 80% 35% at 60% 80%, rgba(140,80,40,0.5) 0%, transparent 70%),
+    radial-gradient(ellipse 100% 30% at 80% 78%, rgba(150,90,45,0.4) 0%, transparent 70%);
+}
+body[data-season="winter"] .mountains {
+  background:
+    radial-gradient(ellipse 120% 40% at 20% 85%, rgba(180,190,200,0.7) 0%, transparent 70%),
+    radial-gradient(ellipse 80% 35% at 60% 80%, rgba(200,210,220,0.5) 0%, transparent 70%),
+    radial-gradient(ellipse 100% 30% at 80% 78%, rgba(190,200,210,0.4) 0%, transparent 70%);
+}
+
+/* Lake */
+.lake {
+  z-index: 3;
+  background: linear-gradient(180deg, rgba(70,130,180,0.3) 0%, rgba(65,105,225,0.5) 30%, rgba(30,80,160,0.7) 100%);
+  position: absolute; bottom: 0; left: 0; right: 0; height: 35%;
+}
+body[data-time="dawn"] .lake { background: linear-gradient(180deg, rgba(255,165,0,0.3) 0%, rgba(255,140,0,0.4) 30%, rgba(200,100,50,0.6) 100%); }
+body[data-time="dusk"] .lake { background: linear-gradient(180deg, rgba(255,69,0,0.3) 0%, rgba(255,99,71,0.4) 30%, rgba(180,60,30,0.6) 100%); }
+body[data-time="night"] .lake { background: linear-gradient(180deg, rgba(10,20,60,0.5) 0%, rgba(15,30,80,0.6) 30%, rgba(5,15,40,0.8) 100%); }
+
+/* Lake shimmer */
+.lake::after {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.03) 2%, transparent 4%);
+  animation: shimmer 8s linear infinite;
+}
+body[data-weather="rain"] .lake::after { display: none; }
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Window frame */
+.window-frame {
+  z-index: 10;
+  position: absolute; inset: 0;
+  pointer-events: none;
+  border: 24px solid #2a2a2a;
+  border-image: linear-gradient(180deg, #3a3a3a, #1a1a1a, #2a2a2a) 1;
+  box-shadow: inset 0 0 80px rgba(0,0,0,0.3);
+}
+/* Window sill */
+.window-sill {
+  z-index: 11;
+  position: absolute; bottom: 0; left: 0; right: 0; height: 60px;
+  background: linear-gradient(180deg, #3a3025, #2a2018);
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
+}
+/* Window sill plant */
+.sill-plant {
+  position: absolute; bottom: 55px; left: 40px; width: 60px; height: 80px;
+  z-index: 12;
+}
+.sill-plant::before {
+  content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 30px; height: 35px; background: #8B6914; border-radius: 3px 3px 8px 8px;
+}
+.sill-plant::after {
+  content: ''; position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+  width: 40px; height: 50px;
+  background: radial-gradient(ellipse at center bottom, #4a7a3a 0%, #3a6a2a 50%, transparent 70%);
+  border-radius: 50% 50% 0 0;
+}
+body[data-season="autumn"] .sill-plant::after {
+  background: radial-gradient(ellipse at center bottom, #8a6a2a 0%, #7a5a1a 50%, transparent 70%);
+}
+body[data-season="winter"] .sill-plant::after {
+  background: radial-gradient(ellipse at center bottom, #6a6a5a 0%, #5a5a4a 50%, transparent 70%);
+}
+
+/* ============ WEATHER EFFECTS ============ */
+#rain-container, #snow-container {
+  position: absolute; inset: 0; z-index: 5; pointer-events: none; overflow: hidden;
+}
+.raindrop {
+  position: absolute; width: 1px; background: linear-gradient(180deg, transparent, rgba(200,220,255,0.6));
+  animation: rain-fall linear infinite;
+}
+@keyframes rain-fall {
+  0% { transform: translateY(-100vh); }
+  100% { transform: translateY(100vh); }
+}
+.snowflake {
+  position: absolute; width: 4px; height: 4px; background: rgba(255,255,255,0.9);
+  border-radius: 50%; animation: snow-fall linear infinite;
+}
+@keyframes snow-fall {
+  0% { transform: translateY(-20px) rotate(0deg); }
+  100% { transform: translateY(100vh) rotate(360deg); }
+}
+
+/* Rain on glass effect */
+.rain-glass {
+  z-index: 6; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg,
+    rgba(200,220,255,0.05) 0%, rgba(200,220,255,0.02) 50%, rgba(200,220,255,0.05) 100%);
+  opacity: 0; transition: opacity 2s;
+}
+body[data-weather="rain"] .rain-glass { opacity: 1; }
+
+/* ============ CHARACTERS ============ */
+#characters { z-index: 7; position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+
+.character {
+  position: absolute; transition: opacity 1s;
+}
+/* Squirrel */
+.char-squirrel {
+  bottom: 65px; left: 15%; width: 50px; height: 50px;
+  animation: squirrel-idle 3s ease-in-out infinite;
+}
+.char-squirrel svg { width: 100%; height: 100%; }
+@keyframes squirrel-idle {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  25% { transform: translateY(-5px) rotate(-2deg); }
+  75% { transform: translateY(-3px) rotate(1deg); }
+}
+.char-squirrel.running {
+  animation: squirrel-run 4s linear forwards;
+}
+@keyframes squirrel-run {
+  0% { left: 15%; }
+  100% { left: 45%; }
+}
+
+/* Boat */
+.char-boat {
+  bottom: 15%; left: 50%; width: 80px; height: 30px;
+  animation: boat-float 6s ease-in-out infinite;
+}
+@keyframes boat-float {
+  0%, 100% { transform: translate(0, 0) rotate(-1deg); }
+  33% { transform: translate(-20px, 3px) rotate(0deg); }
+  66% { transform: translate(20px, -2px) rotate(1deg); }
+}
+.char-boat.rowing {
+  animation: boat-row 12s linear forwards;
+}
+@keyframes boat-row {
+  0% { left: 50%; }
+  100% { left: 15%; }
+}
+
+/* Bird */
+.char-bird {
+  top: 20%; left: 70%; width: 30px; height: 20px;
+  animation: bird-fly 10s ease-in-out infinite;
+}
+@keyframes bird-fly {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-30px, -15px); }
+  50% { transform: translate(-60px, 5px); }
+  75% { transform: translate(-30px, -10px); }
+}
+.char-bird.flying-away {
+  animation: bird-away 3s ease-in forwards;
+}
+@keyframes bird-away {
+  0% { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(100px, -80px) scale(0.3); opacity: 0; }
+}
+
+/* ============ HOME STATE ============ */
+#home-screen {
+  z-index: 20; position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  transition: opacity 2s ease;
+}
+#home-screen.hidden { opacity: 0; pointer-events: none; }
+.brand-logo {
+  font-size: 3vw; letter-spacing: 0.5em; color: rgba(255,255,255,0.9);
+  text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+  margin-bottom: 1vh;
+}
+.brand-sub {
+  font-size: 1.2vw; letter-spacing: 0.3em; color: rgba(255,255,255,0.5);
+  text-shadow: 0 1px 10px rgba(0,0,0,0.5);
+}
+.home-hint {
+  position: absolute; bottom: 8vh; font-size: 0.9vw;
+  color: rgba(255,255,255,0.3); letter-spacing: 0.2em;
+  animation: hint-pulse 3s ease-in-out infinite;
+}
+@keyframes hint-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
+/* ============ POEM STATE ============ */
+#poem-screen {
+  z-index: 25; position: absolute; inset: 0;
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 8vh;
+  opacity: 0; transition: opacity 1s ease; pointer-events: none;
+}
+#poem-screen.visible { opacity: 1; }
+#poem-screen.fade-out { opacity: 0; }
+.poem-text {
+  font-size: 3vh; color: rgba(255,255,255,0.85);
+  text-shadow: 0 1px 10px rgba(0,0,0,0.8);
+  text-align: center; line-height: 1.8; letter-spacing: 0.15em;
+  max-width: 60vw;
+}
+.poem-source {
+  font-size: 1.5vh; color: rgba(255,255,255,0.5);
+  text-align: center; margin-top: 1vh; letter-spacing: 0.1em;
+}
+
+/* ============ SCREENSAVER INFO BAR ============ */
+#info-bar {
+  z-index: 15; position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 15px;
+  padding: 8px 24px;
+  background: rgba(0,0,0,0.3); backdrop-filter: blur(5px);
+  border-radius: 20px;
+  font-size: 1vh; color: rgba(255,255,255,0.7);
+  letter-spacing: 0.1em;
+  opacity: 0; transition: opacity 1s ease;
+}
+#info-bar.visible { opacity: 1; }
+.info-weather { display: flex; align-items: center; gap: 5px; }
+
+/* ============ SCREENSAVER OFF (AMBIENT) ============ */
+#ambient-screen {
+  z-index: 30; position: absolute; inset: 0;
+  opacity: 0; transition: opacity 3s ease; pointer-events: none;
+  filter: grayscale(100%) contrast(1.2) brightness(0.4);
+}
+#ambient-screen.visible { opacity: 1; }
+
+/* SVG Sketch filter overlay */
+.sketch-overlay {
+  position: absolute; inset: 0; z-index: 31;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.01) 1px,
+    rgba(0,0,0,0.02) 1px, rgba(0,0,0,0.01) 2px
+  );
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* Ambient info widgets */
+.ambient-widgets {
+  position: absolute; inset: 0; z-index: 35; pointer-events: none;
+}
+.widget-time {
+  position: absolute; top: 5vh; right: 5vw;
+  font-size: 4vh; color: rgba(255,255,255,0.15);
+  font-family: 'DisplayFont', serif; letter-spacing: 0.05em;
+}
+.widget-date {
+  position: absolute; top: 12vh; right: 5vw;
+  font-size: 1.5vh; color: rgba(255,255,255,0.1);
+  letter-spacing: 0.1em;
+}
+.widget-weather {
+  position: absolute; bottom: 5vh; left: 5vw;
+  font-size: 1.5vh; color: rgba(255,255,255,0.12);
+  letter-spacing: 0.1em;
+}
+.widget-poem {
+  position: absolute; bottom: 5vh; right: 5vw;
+  font-size: 1.3vh; color: rgba(255,255,255,0.1);
+  max-width: 30vw; text-align: right; letter-spacing: 0.1em; line-height: 1.6;
+}
+
+/* ============ CONTROL PANEL ============ */
+#control-panel {
+  position: fixed; right: -320px; top: 0; bottom: 0; width: 300px;
+  background: rgba(20,20,25,0.95); backdrop-filter: blur(10px);
+  z-index: 100; padding: 20px; overflow-y: auto;
+  transition: right 0.4s ease; color: #ccc;
+  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  border-left: 1px solid rgba(255,255,255,0.1);
+}
+#control-panel.open { right: 0; }
+#control-panel h3 {
+  color: #fff; font-size: 14px; margin-bottom: 12px;
+  padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);
+  letter-spacing: 0.1em;
+}
+.cp-section { margin-bottom: 20px; }
+.cp-label { font-size: 12px; color: #888; margin-bottom: 6px; }
+.cp-value { font-size: 12px; color: #fff; float: right; }
+
+.cp-slider {
+  width: 100%; -webkit-appearance: none; appearance: none;
+  height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; outline: none;
+}
+.cp-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px;
+  background: #fff; border-radius: 50%; cursor: pointer;
+}
+
+.cp-btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+.cp-btn {
+  padding: 6px 12px; background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15); border-radius: 4px;
+  color: #ccc; cursor: pointer; font-size: 12px; transition: all 0.2s;
+}
+.cp-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+.cp-btn.active { background: rgba(100,150,255,0.3); border-color: rgba(100,150,255,0.5); color: #fff; }
+
+.cp-btn-action {
+  width: 100%; padding: 8px; margin-bottom: 6px;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px; color: #ccc; cursor: pointer; font-size: 12px;
+  transition: all 0.2s; text-align: center;
+}
+.cp-btn-action:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+.cp-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 0;
+}
+.cp-toggle-switch {
+  width: 40px; height: 22px; background: rgba(255,255,255,0.2);
+  border-radius: 11px; position: relative; cursor: pointer; transition: background 0.3s;
+}
+.cp-toggle-switch.on { background: rgba(100,150,255,0.5); }
+.cp-toggle-switch::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 18px; height: 18px; background: #fff; border-radius: 50%;
+  transition: transform 0.3s;
+}
+.cp-toggle-switch.on::after { transform: translateX(18px); }
+
+/* Toggle button */
+#cp-toggle-btn {
+  position: fixed; right: 10px; top: 10px; z-index: 101;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2);
+  color: #fff; cursor: pointer; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.3s;
+}
+#cp-toggle-btn:hover { background: rgba(0,0,0,0.7); }
+
+/* ============ STATE INDICATOR ============ */
+#state-indicator {
+  position: fixed; left: 10px; top: 10px; z-index: 99;
+  font-size: 11px; color: rgba(255,255,255,0.3);
+  font-family: monospace; letter-spacing: 0.05em;
+}
+</style>
+</head>
+<body data-state="home" data-time="dusk" data-weather="clear" data-season="spring">
+
+<!-- SVG Filters -->
+<svg style="position:absolute;width:0;height:0;">
+  <defs>
+    <filter id="sketch-filter">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" result="noise"/>
+      <feColorMatrix type="saturate" values="0" in="SourceGraphic" result="gray"/>
+      <feBlend in="gray" in2="noise" mode="multiply"/>
+    </filter>
+  </defs>
+</svg>
+
+<div id="stage">
+  <!-- Scene Layers -->
+  <div class="scene-layer sky"></div>
+  <div class="scene-layer mountains"></div>
+  <div class="scene-layer lake"></div>
+
+  <!-- Weather Effects -->
+  <div id="rain-container"></div>
+  <div id="snow-container"></div>
+  <div class="rain-glass"></div>
+
+  <!-- Characters -->
+  <div id="characters">
+    <div class="character char-squirrel" id="char-squirrel">
+      <svg viewBox="0 0 50 50" fill="none">
+        <ellipse cx="25" cy="30" rx="12" ry="10" fill="#8B6914"/>
+        <circle cx="20" cy="22" r="7" fill="#9B7924"/>
+        <circle cx="18" cy="20" r="1.5" fill="#333"/>
+        <path d="M35 28 Q42 18 38 12 Q35 18 32 24" fill="#A08030"/>
+        <ellipse cx="22" cy="35" rx="6" ry="3" fill="#7B5910"/>
+      </svg>
+    </div>
+    <div class="character char-boat" id="char-boat">
+      <svg viewBox="0 0 80 30" fill="none">
+        <path d="M10 20 Q40 28 70 20 L65 15 Q40 22 15 15 Z" fill="#6B4226"/>
+        <line x1="40" y1="15" x2="40" y2="2" stroke="#5a3a1a" stroke-width="1.5"/>
+        <path d="M40 2 L40 12 Q50 8 55 5" fill="rgba(200,200,200,0.6)" stroke="#888" stroke-width="0.5"/>
+        <path d="M38 10 Q30 6 25 4" fill="rgba(180,180,180,0.4)" stroke="#777" stroke-width="0.5"/>
+      </svg>
+    </div>
+    <div class="character char-bird" id="char-bird">
+      <svg viewBox="0 0 30 20" fill="none">
+        <path d="M5 10 Q15 2 25 10" stroke="#555" stroke-width="1.5" fill="none"/>
+        <path d="M5 10 Q10 15 15 10" stroke="#555" stroke-width="1" fill="none"/>
+        <circle cx="22" cy="8" r="1" fill="#555"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Window Frame -->
+  <div class="window-frame"></div>
+  <div class="window-sill"></div>
+  <div class="sill-plant"></div>
+
+  <!-- Home Screen -->
+  <div id="home-screen">
+    <div class="brand-logo">窗 景</div>
+    <div class="brand-sub">一 扇 懂 你 的 智 能 窗</div>
+    <div class="home-hint">等待自动进入屏保，或点击右侧控制面板</div>
+  </div>
+
+  <!-- Poem Screen -->
+  <div id="poem-screen">
+    <div>
+      <div class="poem-text" id="poem-text"></div>
+      <div class="poem-source" id="poem-source"></div>
+    </div>
+  </div>
+
+  <!-- Info Bar -->
+  <div id="info-bar">
+    <span>此时 · 西湖</span>
+    <span class="info-weather" id="info-weather"></span>
+  </div>
+
+  <!-- Ambient / Screen-off Display -->
+  <div id="ambient-screen">
+    <div class="sketch-overlay"></div>
+    <div class="ambient-widgets">
+      <div class="widget-time" id="widget-time"></div>
+      <div class="widget-date" id="widget-date"></div>
+      <div class="widget-weather" id="widget-weather"></div>
+      <div class="widget-poem" id="widget-poem"></div>
+    </div>
+  </div>
+</div>
+
+<!-- State Indicator -->
+<div id="state-indicator">STATE: HOME</div>
+
+<!-- Control Panel Toggle -->
+<button id="cp-toggle-btn">☰</button>
+
+<!-- Control Panel -->
+<div id="control-panel">
+  <h3>A500 窗景 · 控制面板</h3>
+
+  <div class="cp-section">
+    <h3>模拟时间</h3>
+    <div class="cp-label">当前: <span class="cp-value" id="cp-time-value">18:00</span></div>
+    <input type="range" class="cp-slider" id="cp-time" min="0" max="1439" value="1080" step="15">
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#666;margin-top:4px;">
+      <span>0:00</span><span>6:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
+    </div>
+    <div class="cp-btn-group" style="margin-top:8px;">
+      <button class="cp-btn" data-set-time="dawn">黎明</button>
+      <button class="cp-btn" data-set-time="day">白天</button>
+      <button class="cp-btn active" data-set-time="dusk">黄昏</button>
+      <button class="cp-btn" data-set-time="night">夜晚</button>
+    </div>
+  </div>
+
+  <div class="cp-section">
+    <h3>模拟天气</h3>
+    <div class="cp-btn-group" id="cp-weather">
+      <button class="cp-btn active" data-weather="clear">晴</button>
+      <button class="cp-btn" data-weather="cloudy">阴</button>
+      <button class="cp-btn" data-weather="rain">雨</button>
+      <button class="cp-btn" data-weather="snow">雪</button>
+    </div>
+  </div>
+
+  <div class="cp-section">
+    <h3>模拟季节</h3>
+    <div class="cp-btn-group" id="cp-season">
+      <button class="cp-btn active" data-season="spring">春</button>
+      <button class="cp-btn" data-season="summer">夏</button>
+      <button class="cp-btn" data-season="autumn">秋</button>
+      <button class="cp-btn" data-season="winter">冬</button>
+    </div>
+  </div>
+
+  <div class="cp-section">
+    <h3>息屏模式</h3>
+    <div class="cp-toggle">
+      <span class="cp-label">启用</span>
+      <div class="cp-toggle-switch on" id="cp-ambient-toggle"></div>
+    </div>
+    <div class="cp-label" style="margin-top:8px;">进入时间: <span class="cp-value" id="cp-ambient-delay">10</span> 秒</div>
+    <input type="range" class="cp-slider" id="cp-ambient-delay-slider" min="5" max="60" value="10" step="5">
+  </div>
+
+  <div class="cp-section">
+    <h3>屏保触发</h3>
+    <div class="cp-label">等待时间: <span class="cp-value" id="cp-screensaver-delay">30</span> 秒</div>
+    <input type="range" class="cp-slider" id="cp-screensaver-delay-slider" min="5" max="120" value="30" step="5">
+  </div>
+
+  <div class="cp-section">
+    <h3>手动触发</h3>
+    <button class="cp-btn-action" id="cp-btn-screensaver">进入屏保</button>
+    <button class="cp-btn-action" id="cp-btn-ambient">进入息屏</button>
+    <button class="cp-btn-action" id="cp-btn-wakeup">唤醒</button>
+    <button class="cp-btn-action" id="cp-btn-reset">重置旅程</button>
+  </div>
+
+  <div class="cp-section">
+    <h3>每日一诗</h3>
+    <button class="cp-btn-action" id="cp-btn-next-poem">下一首诗</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// A500 窗景 Demo — Main Script
+// ============================================================
+
+(function() {
+  'use strict';
+
+  // ============ POEM DATABASE ============
+  const poems = [
+    { text: '水光潋滟晴方好，山色空蒙雨亦奇', source: '苏轼《饮湖上初晴后雨》', season: ['spring','summer'], weather: ['clear','rain'], time: ['day','dawn'] },
+    { text: '欲把西湖比西子，淡妆浓抹总相宜', source: '苏轼《饮湖上初晴后雨》', season: ['spring','summer','autumn'], weather: ['clear'], time: ['day','dusk'] },
+    { text: '接天莲叶无穷碧，映日荷花别样红', source: '杨万里《晓出净慈寺送林子方》', season: ['summer'], weather: ['clear'], time: ['day','dawn'] },
+    { text: '山外青山楼外楼，西湖歌舞几时休', source: '林升《题临安邸》', season: ['spring','summer','autumn','winter'], weather: ['clear','cloudy'], time: ['day','dusk'] },
+    { text: '毕竟西湖六月中，风光不与四时同', source: '杨万里《晓出净慈寺送林子方》', season: ['summer'], weather: ['clear'], time: ['day'] },
+    { text: '最爱湖东行不足，绿杨阴里白沙堤', source: '白居易《钱塘湖春行》', season: ['spring'], weather: ['clear','cloudy'], time: ['day','dawn'] },
+    { text: '几处早莺争暖树，谁家新燕啄春泥', source: '白居易《钱塘湖春行》', season: ['spring'], weather: ['clear'], time: ['day','dawn'] },
+    { text: '乱花渐欲迷人眼，浅草才能没马蹄', source: '白居易《钱塘湖春行》', season: ['spring'], weather: ['clear'], time: ['day'] },
+    { text: '日出江花红胜火，春来江水绿如蓝', source: '白居易《忆江南》', season: ['spring'], weather: ['clear'], time: ['dawn','day'] },
+    { text: '江南忆，最忆是杭州', source: '白居易《忆江南》', season: ['spring','summer','autumn'], weather: ['clear','cloudy','rain'], time: ['dusk','night'] },
+    { text: '孤山寺北贾亭西，水面初平云脚低', source: '白居易《钱塘湖春行》', season: ['spring'], weather: ['cloudy','clear'], time: ['day','dawn'] },
+    { text: '黑云翻墨未遮山，白雨跳珠乱入船', source: '苏轼《六月二十七日望湖楼醉书》', season: ['summer'], weather: ['rain'], time: ['day'] },
+    { text: '卷地风来忽吹散，望湖楼下水如天', source: '苏轼《六月二十七日望湖楼醉书》', season: ['summer','autumn'], weather: ['rain','clear'], time: ['day','dusk'] },
+    { text: '水光潋滟，山色空蒙', source: '欧阳修《采桑子》', season: ['spring','summer'], weather: ['clear','cloudy'], time: ['day'] },
+    { text: '春水碧于天，画船听雨眠', source: '韦庄《菩萨蛮》', season: ['spring'], weather: ['rain'], time: ['night','dusk'] },
+    { text: '月落乌啼霜满天，江枫渔火对愁眠', source: '张继《枫桥夜泊》', season: ['autumn','winter'], weather: ['clear','cloudy'], time: ['night'] },
+    { text: '烟波澹荡摇空碧，楼殿参差倚夕阳', source: '白居易《西湖晚归回望孤山寺赠诸客》', season: ['spring','summer','autumn'], weather: ['clear'], time: ['dusk'] },
+    { text: '松排山面千重翠，月点波心一颗珠', source: '白居易《春题湖上》', season: ['spring','summer'], weather: ['clear'], time: ['night'] },
+    { text: '碧毯线头抽早稻，青罗裙带展新蒲', source: '白居易《春题湖上》', season: ['spring'], weather: ['clear'], time: ['day'] },
+    { text: '未能抛得杭州去，一半勾留是此湖', source: '白居易《春题湖上》', season: ['spring','summer','autumn','winter'], weather: ['clear','cloudy','rain'], time: ['dusk'] },
+    { text: '湖上春来似画图，乱峰围绕水平铺', source: '白居易《春题湖上》', season: ['spring'], weather: ['clear'], time: ['day','dawn'] },
+    { text: '疏影横斜水清浅，暗香浮动月黄昏', source: '林逋《山园小梅》', season: ['winter'], weather: ['clear','snow'], time: ['dusk','night'] },
+    { text: '断桥残雪映晴空，独倚阑干望远峰', source: '佚名', season: ['winter'], weather: ['clear','snow'], time: ['day','dawn'] },
+    { text: '三秋桂子，十里荷花', source: '柳永《望海潮》', season: ['summer','autumn'], weather: ['clear'], time: ['day'] },
+    { text: '重湖叠巘清嘉，有三秋桂子，十里荷花', source: '柳永《望海潮》', season: ['summer','autumn'], weather: ['clear'], time: ['day'] },
+    { text: '羌管弄晴，菱歌泛夜，嬉嬉钓叟莲娃', source: '柳永《望海潮》', season: ['summer'], weather: ['clear'], time: ['day','night'] },
+    { text: '千顷波平，星河倒映', source: '佚名', season: ['summer','autumn'], weather: ['clear'], time: ['night'] },
+    { text: '秋雨西湖，白堤如练', source: '佚名', season: ['autumn'], weather: ['rain'], time: ['day','dusk'] },
+    { text: '雪满山中高士卧，月明林下美人来', source: '高启《咏梅》', season: ['winter'], weather: ['snow','clear'], time: ['night'] },
+    { text: '一片冰心在玉壶', source: '王昌龄《芙蓉楼送辛渐》', season: ['winter'], weather: ['clear','snow'], time: ['night','dawn'] },
+    { text: '春水初生，春林初盛', source: '冯唐《春》', season: ['spring'], weather: ['clear'], time: ['dawn','day'] },
+    { text: '春风十里，不如你', source: '冯唐《春》', season: ['spring'], weather: ['clear','cloudy'], time: ['day','dusk'] },
+    { text: '晚风拂柳笛声残，夕阳山外山', source: '李叔同《送别》', season: ['autumn'], weather: ['clear','cloudy'], time: ['dusk'] },
+    { text: '长亭外，古道边，芳草碧连天', source: '李叔同《送别》', season: ['spring','summer'], weather: ['clear'], time: ['dawn','day'] },
+    { text: '天街小雨润如酥，草色遥看近却无', source: '韩愈《早春呈水部张十八员外》', season: ['spring'], weather: ['rain'], time: ['day','dawn'] },
+    { text: '千里莺啼绿映红，水村山郭酒旗风', source: '杜牧《江南春》', season: ['spring'], weather: ['clear'], time: ['day'] },
+    { text: '南朝四百八十寺，多少楼台烟雨中', source: '杜牧《江南春》', season: ['spring'], weather: ['rain','cloudy'], time: ['day','dusk'] },
+    { text: '竹外桃花三两枝，春江水暖鸭先知', source: '苏轼《惠崇春江晚景》', season: ['spring'], weather: ['clear'], time: ['dawn','day'] },
+    { text: '小楼一夜听春雨，深巷明朝卖杏花', source: '陆游《临安春雨初霁》', season: ['spring'], weather: ['rain'], time: ['night','dawn'] },
+    { text: '晴川历历汉阳树，芳草萋萋鹦鹉洲', source: '崔颢《黄鹤楼》', season: ['summer'], weather: ['clear'], time: ['day'] },
+    { text: '落霞与孤鹜齐飞，秋水共长天一色', source: '王勃《滕王阁序》', season: ['autumn'], weather: ['clear'], time: ['dusk'] },
+    { text: '秋阴不散霜飞晚，留得枯荷听雨声', source: '李商隐《宿骆氏亭寄怀崔雍崔衮》', season: ['autumn'], weather: ['rain'], time: ['night','dusk'] },
+    { text: '冬尽春来，西湖如旧', source: '佚名', season: ['winter'], weather: ['clear','cloudy'], time: ['day'] },
+    { text: '湖心亭看雪，万径人踪灭', source: '张岱《湖心亭看雪》', season: ['winter'], weather: ['snow'], time: ['day','dawn'] },
+    { text: '雾凇沆砀，天与云与山与水，上下一白', source: '张岱《湖心亭看雪》', season: ['winter'], weather: ['snow'], time: ['day','dawn'] },
+    { text: '湖上影子，惟长堤一痕、湖心亭一点', source: '张岱《湖心亭看雪》', season: ['winter'], weather: ['snow','cloudy'], time: ['day','dusk'] },
+    { text: '莫说相公痴，更有痴似相公者', source: '张岱《湖心亭看雪》', season: ['winter'], weather: ['snow'], time: ['night'] },
+    { text: '一窗山水，半日清闲', source: '窗景·每日一诗', season: ['spring','summer','autumn','winter'], weather: ['clear','cloudy','rain','snow'], time: ['day','dawn','dusk','night'] },
+    { text: '窗含西岭千秋雪，门泊东吴万里船', source: '杜甫《绝句》', season: ['winter'], weather: ['snow','clear'], time: ['day'] },
+    { text: '好雨知时节，当春乃发生', source: '杜甫《春夜喜雨》', season: ['spring'], weather: ['rain'], time: ['night','dusk'] },
+  ];
+
+  // ============ STATE ============
+  const state = {
+    current: 'home',       // home | poem | screensaver | ambient
+    simulatedMinute: 1080, // 18:00
+    weather: 'clear',       // clear | cloudy | rain | snow
+    season: 'spring',       // spring | summer | autumn | winter
+    ambientEnabled: true,
+    ambientDelay: 10,       // seconds (shortened for demo)
+    screensaverDelay: 30,   // seconds (shortened for demo)
+    lastPoemIndex: -1,
+    shownPoems: [],          // recent poem indices
+    idleTimer: null,
+    ambientTimer: null,
+    screensaverTimer: null,
+    screensaverStartTime: null,
+    ambientRestoreData: null,
+    audioContext: null,
+    audioNodes: {},
+  };
+
+  // ============ DOM ============
+  const $ = id => document.getElementById(id);
+  const body = document.body;
+  const homeScreen = $('home-screen');
+  const poemScreen = $('poem-screen');
+  const poemText = $('poem-text');
+  const poemSource = $('poem-source');
+  const infoBar = $('info-bar');
+  const infoWeather = $('info-weather');
+  const ambientScreen = $('ambient-screen');
+  const controlPanel = $('control-panel');
+  const stateIndicator = $('state-indicator');
+
+  // ============ TIME HELPERS ============
+  function minuteToTime(m) {
+    const h = Math.floor(m / 60);
+    const min = m % 60;
+    return `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
+  }
+
+  function getTimePeriod(minute) {
+    if (minute >= 300 && minute < 480) return 'dawn';
+    if (minute >= 480 && minute < 1020) return 'day';
+    if (minute >= 1020 && minute < 1140) return 'dusk';
+    return 'night';
+  }
+
+  function updateTimePeriod() {
+    body.dataset.time = getTimePeriod(state.simulatedMinute);
+  }
+
+  // ============ WEATHER DISPLAY ============
+  const weatherIcons = { clear: '☀️', cloudy: '☁️', rain: '🌧️', snow: '❄️' };
+  const weatherNames = { clear: '晴', cloudy: '阴', rain: '雨', snow: '雪' };
+  const weatherTemps = {
+    spring: { clear: 22, cloudy: 18, rain: 15, snow: 5 },
+    summer: { clear: 33, cloudy: 28, rain: 25, snow: 10 },
+    autumn: { clear: 20, cloudy: 16, rain: 13, snow: 2 },
+    winter: { clear: 8, cloudy: 4, rain: 2, snow: -3 },
+  };
+
+  function getTemp() {
+    return weatherTemps[state.season]?.[state.weather] ?? 20;
+  }
+
+  function updateWeatherDisplay() {
+    const icon = weatherIcons[state.weather];
+    const temp = getTemp();
+    infoWeather.innerHTML = `${icon} ${temp}°C`;
+  }
+
+  // ============ WEATHER PARTICLES ============
+  function createRain() {
+    const container = $('rain-container');
+    container.innerHTML = '';
+    for (let i = 0; i < 120; i++) {
+      const drop = document.createElement('div');
+      drop.className = 'raindrop';
+      drop.style.left = Math.random() * 100 + '%';
+      drop.style.height = (15 + Math.random() * 25) + 'px';
+      drop.style.animationDuration = (0.5 + Math.random() * 0.5) + 's';
+      drop.style.animationDelay = Math.random() * 2 + 's';
+      drop.style.opacity = 0.2 + Math.random() * 0.4;
+      container.appendChild(drop);
+    }
+  }
+
+  function createSnow() {
+    const container = $('snow-container');
+    container.innerHTML = '';
+    for (let i = 0; i < 60; i++) {
+      const flake = document.createElement('div');
+      flake.className = 'snowflake';
+      flake.style.left = Math.random() * 100 + '%';
+      flake.style.width = flake.style.height = (2 + Math.random() * 4) + 'px';
+      flake.style.animationDuration = (4 + Math.random() * 6) + 's';
+      flake.style.animationDelay = Math.random() * 5 + 's';
+      flake.style.opacity = 0.4 + Math.random() * 0.6;
+      container.appendChild(flake);
+    }
+  }
+
+  function updateWeatherEffects() {
+    $('rain-container').style.display = state.weather === 'rain' ? 'block' : 'none';
+    $('snow-container').style.display = state.weather === 'snow' ? 'block' : 'none';
+    if (state.weather === 'rain') createRain();
+    if (state.weather === 'snow') createSnow();
+  }
+
+  // ============ SEASON ============
+  function updateSeason() {
+    body.dataset.season = state.season;
+  }
+
+  // ============ POEM SELECTION ============
+  function selectPoem() {
+    const timePeriod = getTimePeriod(state.simulatedMinute);
+    let candidates = poems.filter((p, i) => {
+      if (state.shownPoems.includes(i)) return false;
+      const seasonMatch = p.season.includes(state.season);
+      const weatherMatch = p.weather.includes(state.weather);
+      const timeMatch = p.time.includes(timePeriod);
+      return seasonMatch && weatherMatch && timeMatch;
+    });
+
+    if (candidates.length === 0) {
+      candidates = poems.filter((_, i) => !state.shownPoems.includes(i));
+    }
+    if (candidates.length === 0) {
+      state.shownPoems = [];
+      candidates = [...poems];
+    }
+
+    const idx = Math.floor(Math.random() * candidates.length);
+    const poem = candidates[idx];
+    const realIndex = poems.indexOf(poem);
+    state.lastPoemIndex = realIndex;
+    state.shownPoems.push(realIndex);
+    if (state.shownPoems.length > 10) state.shownPoems.shift();
+    return poem;
+  }
+
+  function displayPoem(poem) {
+    poemText.textContent = poem.text;
+    poemSource.textContent = poem.source;
+  }
+
+  // ============ STATE TRANSITIONS ============
+  function setState(newState) {
+    console.log(`State: ${state.current} → ${newState}`);
+    state.current = newState;
+    stateIndicator.textContent = `STATE: ${newState.toUpperCase()}`;
+    body.dataset.state = newState;
+    resetIdleTimer();
+  }
+
+  function goToPoem() {
+    if (state.current === 'poem' || state.current === 'screensaver') return;
+    setState('poem');
+    hideHome();
+    const poem = selectPoem();
+    displayPoem(poem);
+    poemScreen.classList.add('visible');
+    poemScreen.classList.remove('fade-out');
+    playPoemSound();
+
+    // After 6 seconds, transition to screensaver
+    setTimeout(() => {
+      if (state.current === 'poem') {
+        goToScreensaver();
+      }
+    }, 6000);
+  }
+
+  function goToScreensaver() {
+    if (state.current === 'ambient') return;
+    setState('screensaver');
+    state.screensaverStartTime = Date.now();
+
+    // Fade out poem
+    poemScreen.classList.add('fade-out');
+    setTimeout(() => {
+      poemScreen.classList.remove('visible', 'fade-out');
+    }, 1000);
+
+    hideHome();
+    showInfoBar();
+    showCharacters();
+    startAudio();
+    startAmbientTimer();
+  }
+
+  function goToAmbient() {
+    if (state.current !== 'screensaver') return;
+    setState('ambient');
+
+    // Save restore data
+    state.ambientRestoreData = {
+      screensaverElapsed: Date.now() - state.screensaverStartTime,
+    };
+
+    // Show ambient with sketch effect
+    ambientScreen.classList.add('visible');
+    stopAudio();
+    hideInfoBar();
+    hideCharacters();
+    updateAmbientWidgets();
+    startAmbientTick();
+  }
+
+  function goToWakeup() {
+    if (state.current === 'home') return;
+
+    if (state.current === 'poem') {
+      poemScreen.classList.remove('visible', 'fade-out');
+    }
+
+    if (state.current === 'ambient') {
+      ambientScreen.classList.remove('visible');
+      stopAmbientTick();
+    }
+
+    setState('screensaver');
+    showInfoBar();
+    showCharacters();
+    startAudio();
+    startAmbientTimer();
+
+    // Restore screensaver timing
+    if (state.ambientRestoreData) {
+      state.screensaverStartTime = Date.now() - state.ambientRestoreData.screensaverElapsed;
+    }
+  }
+
+  function goToHome() {
+    setState('home');
+    hideHome();
+    homeScreen.classList.remove('hidden');
+    poemScreen.classList.remove('visible', 'fade-out');
+    ambientScreen.classList.remove('visible');
+    hideInfoBar();
+    hideCharacters();
+    stopAudio();
+    stopAmbientTick();
+    clearTimers();
+    startScreensaverTimer();
+  }
+
+  // ============ UI HELPERS ============
+  function hideHome() { homeScreen.classList.add('hidden'); }
+  function showInfoBar() { infoBar.classList.add('visible'); }
+  function hideInfoBar() { infoBar.classList.remove('visible'); }
+  function showCharacters() {
+    document.querySelectorAll('.character').forEach(c => c.style.opacity = '1');
+  }
+  function hideCharacters() {
+    document.querySelectorAll('.character').forEach(c => c.style.opacity = '0');
+  }
+
+  function updateAmbientWidgets() {
+    $('widget-time').textContent = minuteToTime(state.simulatedMinute);
+    const today = new Date();
+    $('widget-date').textContent = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    $('widget-weather').textContent = `${weatherIcons[state.weather]} ${weatherNames[state.weather]} ${getTemp()}°C`;
+    if (state.lastPoemIndex >= 0) {
+      $('widget-poem').textContent = poems[state.lastPoemIndex].text;
+    }
+  }
+
+  // ============ IDLE TIMER ============
+  function resetIdleTimer() {
+    clearTimers();
+    if (state.current === 'home') {
+      startScreensaverTimer();
+    } else if (state.current === 'screensaver' && state.ambientEnabled) {
+      startAmbientTimer();
+    }
+  }
+
+  function clearTimers() {
+    if (state.idleTimer) { clearTimeout(state.idleTimer); state.idleTimer = null; }
+    if (state.ambientTimer) { clearTimeout(state.ambientTimer); state.ambientTimer = null; }
+    if (state.screensaverTimer) { clearTimeout(state.screensaverTimer); state.screensaverTimer = null; }
+  }
+
+  function startScreensaverTimer() {
+    clearTimers();
+    state.screensaverTimer = setTimeout(() => {
+      if (state.current === 'home') goToPoem();
+    }, state.screensaverDelay * 1000);
+  }
+
+  function startAmbientTimer() {
+    if (state.ambientTimer) clearTimeout(state.ambientTimer);
+    state.ambientTimer = setTimeout(() => {
+      if (state.current === 'screensaver') goToAmbient();
+    }, state.ambientDelay * 1000);
+  }
+
+  // ============ AMBIENT TICK ============
+  let ambientTickInterval = null;
+  function startAmbientTick() {
+    stopAmbientTick();
+    ambientTickInterval = setInterval(() => {
+      if (state.current === 'ambient') {
+        updateAmbientWidgets();
+      }
+    }, 5000);
+  }
+  function stopAmbientTick() {
+    if (ambientTickInterval) { clearInterval(ambientTickInterval); ambientTickInterval = null; }
+  }
+
+  // ============ AUDIO (Web Audio API) ============
+  function initAudio() {
+    if (state.audioContext) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      state.audioContext = ctx;
+
+      // Ambient wind/water: filtered noise
+      const bufferSize = ctx.sampleRate * 2;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+      const noiseSource = ctx.createBufferSource();
+      noiseSource.buffer = buffer;
+      noiseSource.loop = true;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 400;
+      filter.Q.value = 0.5;
+
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+
+      noiseSource.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      noiseSource.start();
+
+      state.audioNodes = { noiseSource, filter, gain };
+    } catch(e) {
+      console.warn('Audio init failed:', e);
+    }
+  }
+
+  function startAudio() {
+    initAudio();
+    if (state.audioContext && state.audioContext.state === 'suspended') {
+      state.audioContext.resume();
+    }
+    if (state.audioNodes.gain) {
+      const now = state.audioContext.currentTime;
+      state.audioNodes.gain.gain.cancelScheduledValues(now);
+      state.audioNodes.gain.gain.setValueAtTime(state.audioNodes.gain.gain.value, now);
+      state.audioNodes.gain.gain.linearRampToValueAtTime(0.08, now + 2);
+
+      // Adjust filter based on weather
+      const freqs = { clear: 600, cloudy: 400, rain: 800, snow: 300 };
+      state.audioNodes.filter.frequency.linearRampToValueAtTime(freqs[state.weather] || 400, now + 2);
+    }
+  }
+
+  function stopAudio() {
+    if (state.audioNodes.gain && state.audioContext) {
+      const now = state.audioContext.currentTime;
+      state.audioNodes.gain.gain.cancelScheduledValues(now);
+      state.audioNodes.gain.gain.setValueAtTime(state.audioNodes.gain.gain.value, now);
+      state.audioNodes.gain.gain.linearRampToValueAtTime(0, now + 0.5);
+    }
+  }
+
+  function playPoemSound() {
+    initAudio();
+    if (!state.audioContext) return;
+    const ctx = state.audioContext;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    // Gentle bell-like tone
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 440;
+    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 2);
+  }
+
+  // ============ CHARACTER ANIMATIONS ============
+  function animateCharacters() {
+    if (state.current !== 'screensaver') return;
+
+    const squirrel = $('char-squirrel');
+    const boat = $('char-boat');
+    const bird = $('char-bird');
+
+    // Random character behaviors
+    const actions = [
+      () => {
+        squirrel.classList.add('running');
+        setTimeout(() => { squirrel.classList.remove('running'); }, 4000);
+      },
+      () => {
+        boat.classList.add('rowing');
+        setTimeout(() => { boat.classList.remove('rowing'); }, 12000);
+      },
+      () => {
+        bird.classList.add('flying-away');
+        setTimeout(() => { bird.classList.remove('flying-away'); }, 3000);
+      }
+    ];
+
+    // Pick 1-2 random actions
+    const count = 1 + Math.floor(Math.random() * 2);
+    const indices = [];
+    while (indices.length < count) {
+      const idx = Math.floor(Math.random() * actions.length);
+      if (!indices.includes(idx)) indices.push(idx);
+    }
+    indices.forEach(i => actions[i]());
+
+    // Schedule next animation
+    setTimeout(animateCharacters, 8000 + Math.random() * 12000);
+  }
+
+  // ============ CONTROL PANEL ============
+  function setupControlPanel() {
+    // Toggle panel
+    $('cp-toggle-btn').addEventListener('click', () => {
+      controlPanel.classList.toggle('open');
+    });
+
+    // Time slider
+    const timeSlider = $('cp-time');
+    timeSlider.addEventListener('input', (e) => {
+      state.simulatedMinute = parseInt(e.target.value);
+      $('cp-time-value').textContent = minuteToTime(state.simulatedMinute);
+      updateTimePeriod();
+
+      // Update active time period button
+      const period = getTimePeriod(state.simulatedMinute);
+      document.querySelectorAll('[data-set-time]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.setTime === period);
+      });
+    });
+
+    // Time period buttons
+    const timePresets = { dawn: 360, day: 720, dusk: 1080, night: 1320 };
+    document.querySelectorAll('[data-set-time]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.simulatedMinute = timePresets[btn.dataset.setTime];
+        timeSlider.value = state.simulatedMinute;
+        $('cp-time-value').textContent = minuteToTime(state.simulatedMinute);
+        updateTimePeriod();
+        document.querySelectorAll('[data-set-time]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // Weather buttons
+    document.querySelectorAll('[data-weather]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.weather = btn.dataset.weather;
+        body.dataset.weather = state.weather;
+        document.querySelectorAll('[data-weather]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        updateWeatherDisplay();
+        updateWeatherEffects();
+        // Adjust audio
+        if (state.audioNodes.filter) {
+          const freqs = { clear: 600, cloudy: 400, rain: 800, snow: 300 };
+          state.audioNodes.filter.frequency.linearRampToValueAtTime(freqs[state.weather] || 400, state.audioContext.currentTime + 1);
+        }
+      });
+    });
+
+    // Season buttons
+    document.querySelectorAll('[data-season]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.season = btn.dataset.season;
+        updateSeason();
+        document.querySelectorAll('[data-season]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        updateWeatherDisplay();
+      });
+    });
+
+    // Ambient toggle
+    $('cp-ambient-toggle').addEventListener('click', function() {
+      state.ambientEnabled = !state.ambientEnabled;
+      this.classList.toggle('on', state.ambientEnabled);
+    });
+
+    // Ambient delay slider
+    $('cp-ambient-delay-slider').addEventListener('input', (e) => {
+      state.ambientDelay = parseInt(e.target.value);
+      $('cp-ambient-delay').textContent = state.ambientDelay;
+    });
+
+    // Screensaver delay slider
+    $('cp-screensaver-delay-slider').addEventListener('input', (e) => {
+      state.screensaverDelay = parseInt(e.target.value);
+      $('cp-screensaver-delay').textContent = state.screensaverDelay;
+      if (state.current === 'home') startScreensaverTimer();
+    });
+
+    // Manual trigger buttons
+    $('cp-btn-screensaver').addEventListener('click', () => {
+      if (state.current === 'home') goToPoem();
+      else goToPoem();
+    });
+
+    $('cp-btn-ambient').addEventListener('click', () => {
+      if (state.current === 'screensaver') goToAmbient();
+    });
+
+    $('cp-btn-wakeup').addEventListener('click', () => {
+      if (state.current === 'ambient' || state.current === 'poem') goToWakeup();
+    });
+
+    $('cp-btn-reset').addEventListener('click', () => {
+      goToHome();
+    });
+
+    $('cp-btn-next-poem').addEventListener('click', () => {
+      if (state.current === 'poem') {
+        poemScreen.classList.add('fade-out');
+        setTimeout(() => {
+          poemScreen.classList.remove('fade-out', 'visible');
+          const poem = selectPoem();
+          displayPoem(poem);
+          setTimeout(() => poemScreen.classList.add('visible'), 100);
+          playPoemSound();
+        }, 1000);
+      } else {
+        goToPoem();
+      }
+    });
+
+    // Click on stage to wake up
+    $('stage').addEventListener('click', (e) => {
+      if (e.target.closest('#control-panel') || e.target.closest('#cp-toggle-btn')) return;
+      if (state.current === 'ambient') goToWakeup();
+    });
+
+    // Keyboard to wake up
+    document.addEventListener('keydown', (e) => {
+      if (state.current === 'ambient') goToWakeup();
+      if (e.key === 'Escape') controlPanel.classList.toggle('open');
+    });
+  }
+
+  // ============ INIT ============
+  function init() {
+    updateTimePeriod();
+    updateWeatherDisplay();
+    updateWeatherEffects();
+    updateSeason();
+    setupControlPanel();
+    startScreensaverTimer();
+
+    // Start character animations when in screensaver
+    const origGoToScreensaver = goToScreensaver;
+    const _orig = goToScreensaver;
+
+    // Override to also start character animations
+    const _goToScreensaver = goToScreensaver;
+
+    // Actually, let's just call animateCharacters after a delay when entering screensaver
+    // We'll use a MutationObserver approach or just modify the flow
+
+    // Simpler: start character animation loop that checks state
+    setInterval(() => {
+      if (state.current === 'screensaver') {
+        // Characters are controlled by animateCharacters
+      }
+    }, 1000);
+
+    // Start first character animation cycle
+    setTimeout(animateCharacters, 5000);
+  }
+
+  // We need to hook into goToScreensaver to start character animations
+  const _originalGoToScreensaver = goToScreensaver;
+  // Let's use a different approach: restart animation on each screensaver entry
+  // Actually the animateCharacters function already re-schedules itself.
+  // We just need to make sure it stops when leaving screensaver.
+
+  // Override animateCharacters to check state
+  const _origAnimate = animateCharacters;
+
+  // Let's fix this properly: the animateCharacters function is self-scheduling,
+  // but we need to make sure it only runs during screensaver state.
+  // Already handled - the first line checks state.current.
+
+  // Now properly hook goToScreensaver to start animations
+  // Since we can't easily reassign, let's use a wrapper approach:
+  // Actually, the simplest fix: in goToScreensaver we call animateCharacters
+  // Let me restructure:
+
+  init();
+
+  // Hook: when entering screensaver, start character animations
+  // We modify the flow by watching state changes
+  let prevState = state.current;
+  setInterval(() => {
+    if (state.current !== prevState) {
+      if (state.current === 'screensaver') {
+        animateCharacters();
+      }
+      prevState = state.current;
+    }
+  }, 200);
+
+})();
+</script>
+</body>
+</html>
