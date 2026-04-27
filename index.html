@@ -1,0 +1,4973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A500 窗景 Demo</title>
+  <style>
+    :root {
+      --bg-top: #d8ded9;
+      --bg-bottom: #7c8d93;
+      --accent: #d9ecef;
+      --text: rgba(255, 255, 255, 0.98);
+      --text-2: rgba(255, 255, 255, 0.78);
+      --text-3: rgba(255, 255, 255, 0.52);
+      --panel: rgba(255, 255, 255, 0.12);
+      --line: rgba(255, 255, 255, 0.16);
+      --shadow-lg: 0 36px 90px rgba(0, 0, 0, 0.24);
+      --shadow-md: 0 18px 40px rgba(0, 0, 0, 0.18);
+      --ease: cubic-bezier(.22, .82, .2, 1);
+      --window-base: rgba(242, 236, 227, 0.52);
+      --window-edge: rgba(255, 255, 255, 0.5);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "SF Pro Display", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.26), transparent 18%),
+        radial-gradient(circle at 84% 14%, rgba(255, 237, 210, 0.22), transparent 16%),
+        linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+    }
+
+    body.reduce-motion *,
+    body.reduce-motion *::before,
+    body.reduce-motion *::after {
+      animation: none !important;
+      transition-duration: 0.01ms !important;
+    }
+
+    button,
+    input {
+      font: inherit;
+      color: inherit;
+    }
+
+    button {
+      border: none;
+      background: none;
+      cursor: pointer;
+    }
+
+    .app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .ambient {
+      position: absolute;
+      inset: -8%;
+      z-index: 0;
+      filter: blur(32px) saturate(1.04);
+      transform: scale(1.08);
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,0.18), transparent 34%),
+        linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+      transition: background .5s var(--ease);
+    }
+
+    .ambient::before,
+    .ambient::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+    }
+
+    .ambient::before {
+      background:
+        radial-gradient(circle at 20% 22%, rgba(255,255,255,0.14), transparent 18%),
+        radial-gradient(circle at 80% 18%, rgba(255,248,235,0.18), transparent 16%),
+        linear-gradient(180deg, rgba(10, 18, 28, 0.04), rgba(10, 18, 28, 0.18));
+    }
+
+    .ambient::after {
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent 28%, transparent 74%, rgba(255,255,255,0.04));
+      mix-blend-mode: screen;
+    }
+
+    .grain {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.12;
+      background-image:
+        radial-gradient(circle at 20% 30%, rgba(255,255,255,.26) 0 1px, transparent 1px),
+        radial-gradient(circle at 72% 64%, rgba(255,255,255,.18) 0 1px, transparent 1px);
+      background-size: 220px 220px, 280px 280px;
+    }
+
+    .shell {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      padding: 34px 42px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .view {
+      display: none;
+      width: 100%;
+      height: 100%;
+    }
+
+    .view.active {
+      display: flex;
+    }
+
+    .topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+    }
+
+    .brand-mark {
+      width: 52px;
+      height: 72px;
+      stroke: rgba(255,255,255,0.92);
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.92;
+    }
+
+    .brand-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .brand-copy h1 {
+      font-size: 34px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+    }
+
+    .brand-copy p {
+      font-size: 13px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.68);
+      max-width: 300px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .toolbar-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toolbar-item label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.74);
+      transition: color .22s ease, transform .22s var(--ease), opacity .22s ease;
+    }
+
+    .icon-btn {
+      position: relative;
+      width: 58px;
+      height: 58px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(16px) saturate(130%);
+      -webkit-backdrop-filter: blur(16px) saturate(130%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), var(--shadow-md);
+      transition: transform .24s var(--ease), background .24s ease, box-shadow .24s ease;
+    }
+
+    .icon-btn::after {
+      content: "";
+      position: absolute;
+      inset: -7px;
+      border-radius: 999px;
+      border: 2px solid rgba(255,255,255,0);
+      box-shadow: 0 0 0 0 rgba(160,205,255,0);
+      pointer-events: none;
+      transition: border-color .22s ease, box-shadow .22s ease, opacity .22s ease;
+      opacity: 0;
+    }
+
+    .icon-btn:hover,
+    .icon-btn:focus-visible,
+    .icon-btn.is-focused {
+      transform: translateY(-3px) scale(1.06);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0.13)),
+        rgba(255,255,255,0.16);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 22px 52px rgba(0,0,0,0.24), 0 0 0 5px rgba(255,255,255,0.08);
+      outline: none;
+    }
+
+    .icon-btn:hover::after,
+    .icon-btn:focus-visible::after,
+    .icon-btn.is-focused::after {
+      opacity: 1;
+      border-color: rgba(255,255,255,0.78);
+      box-shadow: 0 0 0 5px rgba(142,194,255,0.14), 0 0 24px rgba(180,220,255,0.22);
+    }
+
+    .icon-btn.is-focused + label,
+    .icon-btn:hover + label,
+    .icon-btn:focus-visible + label {
+      color: rgba(255,255,255,0.96);
+      transform: translateY(1px);
+    }
+
+    .icon-btn svg,
+    .drawer-close svg,
+    .chip svg {
+      width: 24px;
+      height: 24px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .home-view {
+      flex-direction: column;
+    }
+
+    .home-stage {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(120px, 220px) minmax(900px, 1fr) minmax(120px, 220px);
+      gap: 24px;
+      align-items: center;
+      perspective: 1200px;
+      position: relative;
+    }
+
+    .preview-slot {
+      position: relative;
+      height: min(56vh, 520px);
+      opacity: 0.66;
+      filter: saturate(.86) brightness(.9);
+      transition: opacity .28s ease, filter .28s ease, transform .36s var(--ease);
+    }
+
+    .preview-slot.left { transform: translateX(-18px) rotateY(9deg); }
+    .preview-slot.right { transform: translateX(18px) rotateY(-9deg); }
+    .preview-slot:hover,
+    .preview-slot:focus-visible {
+      opacity: .92;
+      filter: saturate(.96) brightness(.98);
+      outline: none;
+    }
+
+    .preview-slot:hover .window-shell.preview,
+    .preview-slot:focus-visible .window-shell.preview {
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 30px 72px rgba(0,0,0,0.22), 0 0 0 4px rgba(255,255,255,0.08);
+    }
+
+    .hero-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+      min-width: 0;
+    }
+
+    .home-hero-wrap {
+      position: relative;
+      width: min(100%, 1160px);
+      overflow: visible;
+    }
+
+    .home-hero-wrap .window-shell.hero {
+      width: 100%;
+    }
+
+    .home-quick-actions {
+      position: absolute;
+      left: calc(100% + 22px);
+      top: 7%;
+      z-index: 6;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      border-radius: 24px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018)),
+        rgba(255,255,255,0.018);
+      border: 1px solid rgba(255,255,255,0.075);
+      backdrop-filter: blur(14px) saturate(125%);
+      -webkit-backdrop-filter: blur(14px) saturate(125%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 14px 32px rgba(0,0,0,0.07);
+      opacity: 0;
+      transform: translateX(-10px) scale(.98);
+      pointer-events: none;
+      transition: opacity .28s var(--ease), transform .28s var(--ease);
+    }
+
+    .home-quick-actions.show,
+    .home-hero-wrap:hover .home-quick-actions {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .home-quick-action {
+      width: 126px;
+      height: 42px;
+      padding: 0 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 9px;
+      border-radius: 999px;
+      color: rgba(255,255,255,0.88);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.105), rgba(255,255,255,0.035)),
+        rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,0.095);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      transition: transform .22s var(--ease), background .22s ease, box-shadow .22s ease;
+    }
+
+    .home-quick-action:hover,
+    .home-quick-action:focus-visible {
+      transform: translateY(-2px);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.07)),
+        rgba(255,255,255,0.09);
+      color: rgba(255,255,255,0.98);
+      box-shadow: 0 14px 30px rgba(0,0,0,0.14), 0 0 0 4px rgba(255,255,255,0.055);
+      outline: none;
+    }
+
+    .home-quick-action svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .hero-title-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .hero-title-group .kicker {
+      font-size: 12px;
+      letter-spacing: 0.24em;
+      color: var(--text-3);
+      text-transform: uppercase;
+    }
+
+    .hero-title-group h2 {
+      font-size: clamp(38px, 3.4vw, 54px);
+      font-weight: 400;
+      letter-spacing: 0.12em;
+      font-family: "STKaiti", "KaiTi", "Noto Serif SC", "Songti SC", serif;
+      text-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    .hero-title-group p {
+      font-size: 12px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.58);
+      max-width: 380px;
+    }
+
+    .window-shell {
+      position: relative;
+      width: 100%;
+      padding: 14px;
+      border-radius: 30px;
+      background:
+        linear-gradient(180deg, var(--window-edge), rgba(255,255,255,0.08)),
+        linear-gradient(180deg, var(--window-base), rgba(255,255,255,0.12));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), var(--shadow-lg);
+      transition: transform .32s var(--ease), box-shadow .32s var(--ease), opacity .28s ease, filter .28s ease;
+    }
+
+    .window-shell::before {
+      content: "";
+      position: absolute;
+      inset: 10px;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.16);
+      pointer-events: none;
+    }
+
+    .window-shell.hero {
+      width: min(100%, 1160px);
+      aspect-ratio: 16 / 9;
+    }
+
+    .window-shell.hero::after {
+      content: "";
+      position: absolute;
+      inset: -10px;
+      border-radius: 38px;
+      border: 2px solid rgba(255,255,255,0);
+      box-shadow: 0 0 0 0 rgba(160,205,255,0);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .26s ease, border-color .26s ease, box-shadow .26s ease;
+    }
+
+    .window-shell.hero:not(.is-focused) {
+      opacity: .88;
+      filter: saturate(.94) brightness(.96);
+      transform: scale(.988);
+    }
+
+    .window-shell.hero.is-focused::after {
+      opacity: 1;
+      border-color: rgba(255,255,255,0.82);
+      box-shadow: 0 0 0 7px rgba(142,194,255,0.13), 0 0 42px rgba(175,215,255,0.26);
+    }
+
+    .window-shell.hero.is-focused .window-media {
+      transform: scale(1.035);
+    }
+
+    .window-shell.preview {
+      aspect-ratio: 0.88 / 1;
+    }
+
+    .window-shell.play {
+      width: var(--play-stage-width);
+      height: var(--play-stage-height);
+      max-height: none;
+      aspect-ratio: auto;
+      padding: 0;
+      border-radius: 0;
+      background: none;
+      box-shadow: none;
+    }
+
+    .window-shell.play::before {
+      display: none;
+    }
+
+    .window-shell:hover,
+    .window-shell.is-focused {
+      transform: translateY(-3px) scale(1.008);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 42px 96px rgba(0,0,0,0.28), 0 0 0 6px rgba(255,255,255,0.06);
+      outline: none;
+    }
+
+    .window-shell.play:hover,
+    .window-shell.play.is-focused {
+      transform: none;
+      box-shadow: none;
+    }
+
+    .window-shell.play .window-inner {
+      border-radius: 0;
+      background: none;
+      box-shadow: none;
+    }
+
+    .window-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      border-radius: 24px;
+      background: rgba(0,0,0,0.14);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), inset 0 18px 28px rgba(255,255,255,0.06), inset 0 -40px 80px rgba(0,0,0,0.14);
+    }
+
+    .window-media {
+      position: absolute;
+      inset: 0;
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+      transform: scale(1.02);
+      transition: background-image .4s ease, filter .4s ease, transform 10s linear;
+    }
+
+    .window-media::before,
+    .window-media::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .window-media::before {
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent 24%, transparent 80%, rgba(0,0,0,0.12));
+      mix-blend-mode: screen;
+    }
+
+    .window-media::after {
+      background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.04) 54%, rgba(0,0,0,0.18));
+    }
+
+    .window-copy {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 28px 30px 30px;
+      pointer-events: none;
+    }
+
+    .window-copy.preview-copy {
+      justify-content: flex-end;
+      padding: 22px 18px 18px;
+    }
+
+    .window-copy.play-copy {
+      justify-content: flex-start;
+      align-items: stretch;
+      padding: 86px 34px 34px;
+    }
+
+    .window-copy.home-copy {
+      justify-content: flex-end;
+      gap: 0;
+    }
+
+    .favorite-badge {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 3;
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+    }
+
+    .favorite-badge svg {
+      width: 16px;
+      height: 16px;
+      fill: #fff;
+      stroke: none;
+      opacity: 0.96;
+    }
+
+    .stage-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: rgba(255,255,255,0.86);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 4;
+      transition: transform .24s var(--ease), background .24s ease, opacity .24s ease;
+    }
+
+    .stage-arrow.left { left: calc(50% - 646px); }
+    .stage-arrow.right { right: calc(50% - 646px); }
+
+    .stage-arrow:hover,
+    .stage-arrow:focus-visible {
+      transform: translateY(-50%) scale(1.04);
+      background: rgba(255,255,255,0.12);
+      outline: none;
+    }
+
+    .stage-arrow svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .info-embedded {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      width: fit-content;
+      max-width: min(70%, 560px);
+      padding: 14px 16px 15px;
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06)),
+        rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(18px) saturate(130%);
+      -webkit-backdrop-filter: blur(18px) saturate(130%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.14);
+      transition: opacity .34s var(--ease), transform .34s var(--ease), max-width .34s var(--ease), padding .34s var(--ease);
+    }
+
+    .window-copy.home-copy .info-embedded {
+      background: none;
+      border: none;
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      padding: 0;
+      gap: 10px;
+      max-width: none;
+    }
+
+    .play-meta-shell {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      text-align: center;
+      color: rgba(255,255,255,0.96);
+      text-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      transition: opacity .34s var(--ease), transform .34s var(--ease);
+    }
+
+    .play-meta-shell.hidden {
+      opacity: 0;
+      transform: translateY(-12px) scale(.98);
+      pointer-events: none;
+    }
+
+    .play-meta-location {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-size: clamp(20px, 2vw, 34px);
+      font-weight: 500;
+      letter-spacing: 0.06em;
+    }
+
+    .play-meta-location svg,
+    .play-meta-line svg {
+      flex: 0 0 auto;
+      fill: none;
+      stroke: rgba(255,255,255,0.9);
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .play-meta-location svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .play-meta-line {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+      font-size: clamp(14px, 1.1vw, 20px);
+      color: rgba(255,255,255,0.86);
+    }
+
+    .play-meta-line .dot-sep {
+      width: 3px;
+      height: 3px;
+      background: rgba(255,255,255,0.5);
+    }
+
+    .play-meta-line .info-pair {
+      gap: 7px;
+    }
+
+    .play-meta-line .info-pair svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    .info-embedded.hidden {
+      opacity: 0;
+      transform: translateY(-10px) scale(.96);
+    }
+
+    .window-shell.play.overlay-min .info-embedded,
+    .immersive-shell.overlay-min .info-embedded {
+      opacity: .72;
+      max-width: 180px;
+      padding: 10px 12px;
+      transform: translateY(-6px);
+    }
+
+    .window-shell.play.overlay-min .info-detail,
+    .immersive-shell.overlay-min .info-detail,
+    .window-shell.play.overlay-min .play-hero,
+    .immersive-shell.overlay-min .play-hero,
+    .window-shell.play.overlay-min .play-meta-shell,
+    .immersive-shell.overlay-min .play-meta-shell {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+
+    .info-text {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .info-kicker {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: rgba(255,255,255,0.56);
+      text-transform: uppercase;
+    }
+
+    .info-main {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      color: rgba(255,255,255,0.92);
+    }
+
+    .info-main.small {
+      font-size: 13px;
+      color: rgba(255,255,255,0.78);
+      gap: 8px;
+    }
+
+    .info-pair {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .info-pair svg {
+      width: 14px;
+      height: 14px;
+      stroke: rgba(255,255,255,0.78);
+      fill: none;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex: 0 0 auto;
+    }
+
+    .info-main strong {
+      font-weight: 500;
+      letter-spacing: 0.03em;
+    }
+
+    .geo-line {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .geo-line svg {
+      width: 16px;
+      height: 16px;
+      stroke: rgba(255,255,255,0.88);
+      fill: none;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex: 0 0 auto;
+    }
+
+    .dot-sep {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.42);
+    }
+
+    .window-footer {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .window-footer.home-footer {
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+
+    .window-footer.preview-footer {
+      justify-content: center;
+      align-items: flex-end;
+    }
+
+    .window-copy-text {
+      max-width: 50%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: opacity .34s var(--ease), transform .34s var(--ease);
+    }
+
+    .window-copy-text h3 {
+      font-size: clamp(26px, 2.4vw, 38px);
+      font-weight: 420;
+      letter-spacing: 0.14em;
+      font-family: "STKaiti", "KaiTi", "Noto Serif SC", "Songti SC", serif;
+      text-shadow: 0 10px 28px rgba(0,0,0,0.16);
+    }
+
+    .window-copy-text p {
+      font-size: 13px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.76);
+      max-width: 420px;
+    }
+
+    .window-tags {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      max-width: 28%;
+      transition: opacity .34s var(--ease), transform .34s var(--ease);
+    }
+
+    .tag {
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      color: rgba(255,255,255,0.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .preview-slot .window-copy {
+      padding: 20px 18px 18px;
+    }
+
+    .preview-slot .window-copy-text {
+      max-width: 100%;
+      gap: 6px;
+      justify-content: flex-end;
+      align-items: center;
+      text-align: center;
+    }
+
+    .preview-slot .window-copy-text h3 {
+      font-size: 15px;
+      letter-spacing: 0.08em;
+      opacity: 0.96;
+      font-weight: 520;
+      text-shadow: 0 6px 18px rgba(0,0,0,0.18);
+    }
+
+    .preview-slot .window-tags {
+      display: none;
+    }
+
+    .preview-slot .window-copy-text p {
+      display: none;
+    }
+
+    .preview-meta {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.8);
+      line-height: 1.45;
+      text-shadow: 0 4px 14px rgba(0,0,0,0.2);
+    }
+
+    .preview-meta .dot-sep {
+      width: 3px;
+      height: 3px;
+      background: rgba(255,255,255,0.34);
+    }
+
+    .preview-copy-block {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 12px 12px 4px;
+      background: linear-gradient(180deg, rgba(8,14,20,0), rgba(8,14,20,0.16) 26%, rgba(8,14,20,0.3));
+      border-radius: 0 0 18px 18px;
+    }
+
+    .home-meta-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      color: rgba(255,255,255,0.92);
+      text-shadow: 0 6px 20px rgba(0,0,0,0.16);
+    }
+
+    .home-location-line,
+    .home-status-line {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .home-location-line {
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+
+    .home-status-line {
+      font-size: 13px;
+      color: rgba(255,255,255,0.8);
+    }
+
+    .home-status-line .dot-sep {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .home-meta-stack svg {
+      width: 14px;
+      height: 14px;
+      stroke: rgba(255,255,255,0.82);
+      fill: none;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex: 0 0 auto;
+    }
+
+    .window-shell.anim-left {
+      animation: cardLeftIn .42s var(--ease);
+    }
+
+    .window-shell.anim-right {
+      animation: cardRightIn .42s var(--ease);
+    }
+
+    @keyframes cardLeftIn {
+      0% { opacity: .0; transform: translateX(42px) scale(.97); }
+      100% { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    @keyframes cardRightIn {
+      0% { opacity: .0; transform: translateX(-42px) scale(.97); }
+      100% { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    .scene-dots {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .category-nav {
+      margin-top: -2px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 30px;
+      min-height: 42px;
+      padding: 6px 16px;
+      color: rgba(255,255,255,0.58);
+    }
+
+    .category-tab {
+      position: relative;
+      min-width: 52px;
+      padding: 9px 4px 13px;
+      font-size: 15px;
+      font-weight: 420;
+      letter-spacing: 0.12em;
+      color: rgba(255,255,255,0.58);
+      transition: color .24s ease, transform .24s var(--ease), text-shadow .24s ease;
+    }
+
+    .category-tab::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 4px;
+      width: 0;
+      height: 2px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.9);
+      transform: translateX(-50%);
+      transition: width .24s var(--ease), opacity .24s ease;
+      opacity: 0;
+    }
+
+    .category-tab.active,
+    .category-tab.is-focused,
+    .category-tab:hover {
+      color: rgba(255,255,255,0.96);
+      transform: translateY(-1px);
+      text-shadow: 0 8px 24px rgba(0,0,0,0.16);
+      outline: none;
+    }
+
+    .category-tab.active::after {
+      width: 28px;
+      opacity: 1;
+    }
+
+    .category-tab.is-focused::after,
+    .category-tab:hover::after {
+      width: 42px;
+      opacity: .95;
+    }
+
+    .scene-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.34);
+      transition: transform .24s var(--ease), background .24s ease, box-shadow .24s ease;
+    }
+
+    .scene-dot.active {
+      background: rgba(255,255,255,0.96);
+      transform: scale(1.08);
+      box-shadow: 0 0 0 7px rgba(255,255,255,0.08);
+    }
+
+    .home-hint { display: none; }
+
+    .play-view {
+      --play-stage-width: 100vw;
+      --play-stage-height: 100vh;
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      flex-direction: column;
+      padding: 0;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(7,10,14,0.02), rgba(7,10,14,0.08));
+    }
+
+    .play-view::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      background: #000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .34s ease;
+    }
+
+    .play-view.scene-fading::after {
+      opacity: 1;
+    }
+
+    .play-top {
+      display: none;
+    }
+
+    .back-chip,
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: var(--shadow-md);
+      font-size: 14px;
+      letter-spacing: 0.04em;
+      color: rgba(255,255,255,0.92);
+    }
+
+    .play-main {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+    }
+
+    .play-stage {
+      width: 100%;
+      height: 100%;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .play-window-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+    }
+
+    .play-overlay-hotspot {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .play-rail {
+      position: absolute;
+      right: calc((100vw - var(--play-stage-width)) / 2 + 18px);
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-items: stretch;
+      z-index: 4;
+      transition: opacity .34s var(--ease), transform .34s var(--ease);
+    }
+
+    .rail-btn {
+      width: 62px;
+      min-width: 62px;
+      height: 62px;
+      padding: 0 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      overflow: hidden;
+      border-radius: 999px;
+      color: rgba(255,255,255,0.96);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.24), rgba(255,255,255,0.1)),
+        rgba(76,102,138,0.18);
+      border: 1px solid rgba(255,255,255,0.2);
+      backdrop-filter: blur(22px) saturate(145%);
+      -webkit-backdrop-filter: blur(22px) saturate(145%);
+      box-shadow: 0 18px 34px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2);
+      transition: width .24s var(--ease), gap .24s var(--ease), transform .24s var(--ease), background .24s ease, box-shadow .24s ease;
+    }
+
+    .rail-btn span {
+      max-width: 0;
+      opacity: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      font-size: 16px;
+      letter-spacing: 0.04em;
+      transition: max-width .24s var(--ease), opacity .18s ease;
+    }
+
+    .rail-btn.is-focused,
+    .rail-btn:hover {
+      width: 172px;
+      gap: 12px;
+      transform: translateX(-4px);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0.12)),
+        rgba(92,122,164,0.22);
+      box-shadow: 0 20px 42px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.24), 0 0 0 5px rgba(255,255,255,0.08);
+      outline: none;
+    }
+
+    .rail-btn svg {
+      width: 22px;
+      height: 22px;
+      flex: 0 0 auto;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .rail-btn.is-focused span,
+    .rail-btn:hover span {
+      max-width: 88px;
+      opacity: 1;
+    }
+
+    .play-view.overlay-min .play-rail {
+      opacity: 0;
+      transform: translateY(-50%) translateX(20px);
+      pointer-events: none;
+    }
+
+    .play-view.season-panel-open .play-rail,
+    .play-view.season-panel-open .play-meta-shell {
+      opacity: 0;
+      transform: translateY(-12px);
+      pointer-events: none;
+    }
+
+    .play-view.season-panel-open .play-rail {
+      transform: translateY(-50%) translateX(20px);
+    }
+
+    .season-panel {
+      position: absolute;
+      left: 50%;
+      bottom: 7.2vh;
+      z-index: 6;
+      width: min(78vw, 1320px);
+      min-height: 166px;
+      padding: 22px 24px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-rows: auto auto;
+      gap: 18px 22px;
+      align-items: stretch;
+      border-radius: 24px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08)),
+        rgba(15,20,28,0.58);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow: 0 28px 80px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.16);
+      backdrop-filter: blur(24px) saturate(145%);
+      -webkit-backdrop-filter: blur(24px) saturate(145%);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-50%) translateY(18px);
+      transition: opacity .28s var(--ease), transform .28s var(--ease);
+    }
+
+    .season-panel.open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .season-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-right: 20px;
+      border-right: 1px solid rgba(255,255,255,0.18);
+    }
+
+    .season-actions {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(150px, 210px));
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .season-group-title {
+      text-align: center;
+      font-size: 18px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .season-options {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .season-pick,
+    .season-random,
+    .season-reset {
+      min-width: 0;
+      height: 76px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 12px;
+      color: rgba(255,255,255,0.86);
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      transition: transform .2s var(--ease), background .2s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .season-pick strong,
+    .season-random strong,
+    .season-reset strong {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .season-pick .pick-icon,
+    .season-random .pick-icon,
+    .season-reset .pick-icon {
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .season-pick:hover,
+    .season-pick.is-focused,
+    .season-pick.is-active,
+    .season-random.is-focused,
+    .season-random:hover,
+    .season-reset.is-focused,
+    .season-reset:hover {
+      transform: translateY(-1px);
+      background: rgba(112,170,232,0.2);
+      border-color: rgba(154,203,255,0.62);
+      box-shadow: 0 0 0 3px rgba(120,180,255,0.16);
+      outline: none;
+    }
+
+    .season-random {
+      width: 100%;
+      height: 64px;
+      flex-direction: row;
+      border-radius: 999px;
+    }
+
+    .season-reset {
+      width: 100%;
+      height: 64px;
+      flex-direction: row;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+    }
+
+    .play-view.entering .play-rail {
+      animation: railReveal .64s var(--ease) both;
+      animation-delay: .12s;
+    }
+
+    @keyframes railReveal {
+      0% { opacity: 0; transform: translateY(-50%) translateX(24px); }
+      100% { opacity: 1; transform: translateY(-50%) translateX(0); }
+    }
+
+    .play-view.entering .play-meta-shell {
+      animation: playMetaReveal .72s var(--ease) both;
+      animation-delay: .08s;
+    }
+
+    @keyframes playMetaReveal {
+      0% { opacity: 0; transform: translateY(-18px) scale(.98); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .play-view.entering .window-shell.play {
+      animation: playWindowOpen .72s cubic-bezier(.2, .8, .15, 1) both;
+      transform-origin: center center;
+    }
+
+    .play-view.entering .window-shell.play .window-media {
+      animation: playMediaOpen .72s cubic-bezier(.2, .8, .15, 1) both;
+    }
+
+    @keyframes playWindowOpen {
+      0% { opacity: 0; transform: scale(.74); filter: blur(8px); }
+      58% { opacity: 1; transform: scale(1.03); filter: blur(0); }
+      100% { opacity: 1; transform: scale(1); filter: blur(0); }
+    }
+
+    @keyframes playMediaOpen {
+      0% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+
+    .play-footer {
+      display: none;
+    }
+
+    .status-chip {
+      min-width: 400px;
+    }
+
+    .status-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .status-copy strong {
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+    }
+
+    .status-copy span {
+      font-size: 12px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.68);
+    }
+
+    .tv-keys {
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.78);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .drawer-mask {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      background: rgba(10, 16, 24, 0.28);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .26s var(--ease);
+    }
+
+    .drawer-mask.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      bottom: 24px;
+      width: min(44vw, 520px);
+      z-index: 11;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 30px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.08)),
+        linear-gradient(180deg, rgba(19,28,39,0.74), rgba(19,28,39,0.66));
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.18),
+        0 34px 80px rgba(0,0,0,0.26);
+      backdrop-filter: blur(34px) saturate(155%);
+      -webkit-backdrop-filter: blur(34px) saturate(155%);
+      transform: translateX(120%);
+      opacity: 0;
+      transition: transform .34s var(--ease), opacity .26s var(--ease);
+    }
+
+    .drawer.open {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    .drawer-head {
+      padding: 28px 28px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .drawer-head-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .drawer-head h3 {
+      font-size: 24px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+    }
+
+    .drawer-head p {
+      font-size: 14px;
+      line-height: 1.75;
+      color: var(--text-2);
+    }
+
+    .drawer-close {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .drawer-body {
+      padding: 18px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .drawer-body::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .drawer-body::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.16);
+      border-radius: 999px;
+    }
+
+    .scene-item,
+    .setting-card {
+      border-radius: 22px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .scene-item {
+      display: grid;
+      grid-template-columns: 118px minmax(0, 1fr) 118px;
+      gap: 16px;
+      align-items: center;
+      padding: 12px;
+      transition: transform .24s var(--ease), background .24s ease, border-color .24s ease;
+    }
+
+    .scene-item:hover,
+    .scene-item.is-current,
+    .scene-item.is-focused {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.16);
+    }
+
+    .scene-thumb {
+      width: 100%;
+      aspect-ratio: 1.42 / 1;
+      padding: 6px;
+      border-radius: 16px;
+      background:
+        linear-gradient(180deg, var(--thumb-edge), rgba(255,255,255,0.08)),
+        linear-gradient(180deg, var(--thumb-base), rgba(255,255,255,0.12));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.16);
+    }
+
+    .scene-thumb-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 11px;
+      background-position: center;
+      background-size: cover;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+    }
+
+    .scene-info {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .scene-info strong {
+      font-size: 17px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .scene-info p {
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text-2);
+    }
+
+    .scene-meta-line {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: rgba(255,255,255,0.68);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .scene-pills {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 8px;
+      overflow: hidden;
+    }
+
+    .scene-tail {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      align-items: flex-end;
+      justify-content: center;
+      min-width: 118px;
+    }
+
+    .scene-favorite-action {
+      width: 100%;
+      padding: 9px 10px;
+      border-radius: 999px;
+      color: rgba(255,255,255,0.92);
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      transition: transform .2s var(--ease), background .2s ease, box-shadow .2s ease;
+    }
+
+    .scene-favorite-action:hover,
+    .scene-favorite-action:focus-visible {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.16);
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.06);
+      outline: none;
+    }
+
+    .scene-favorite-action.is-favorite {
+      color: rgba(255,232,238,0.96);
+      background: rgba(255,114,145,0.16);
+      border-color: rgba(255,160,180,0.26);
+    }
+
+    .mini-tag {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 11px;
+      color: rgba(255,255,255,0.74);
+      letter-spacing: 0.04em;
+    }
+
+    .mini-tag.state {
+      color: rgba(255,255,255,0.9);
+      background: rgba(130,180,255,0.16);
+      border-color: rgba(150,200,255,0.24);
+    }
+
+    .mini-tag.favorite {
+      color: rgba(255,232,238,0.96);
+      background: rgba(255,114,145,0.16);
+      border-color: rgba(255,160,180,0.26);
+    }
+
+    .mini-tag.screensaver {
+      color: rgba(225,240,255,0.96);
+      background: rgba(120,164,220,0.18);
+      border-color: rgba(170,210,255,0.24);
+    }
+
+    .screensaver-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .screensaver-section-title {
+      padding: 4px 4px 0;
+      font-size: 13px;
+      letter-spacing: 0.14em;
+      color: rgba(255,255,255,0.58);
+    }
+
+    .screensaver-card {
+      display: grid;
+      grid-template-columns: 118px minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      padding: 12px;
+      border-radius: 24px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.105), rgba(255,255,255,0.045)),
+        rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: transform .24s var(--ease), background .24s ease, border-color .24s ease, box-shadow .24s ease;
+    }
+
+    .screensaver-card:hover,
+    .screensaver-card.is-focused,
+    .screensaver-card.is-current {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.115);
+      border-color: rgba(255,255,255,0.18);
+      box-shadow: 0 12px 34px rgba(0,0,0,0.16);
+    }
+
+    .screensaver-card .scene-thumb {
+      border-radius: 18px;
+      padding: 6px;
+    }
+
+    .screensaver-card .scene-thumb-inner {
+      border-radius: 13px;
+    }
+
+    .screensaver-card .scene-info {
+      gap: 7px;
+      overflow: hidden;
+    }
+
+    .screensaver-card .scene-info strong,
+    .screensaver-card .scene-info p,
+    .screensaver-card .scene-meta-line,
+    .screensaver-card .scene-pills {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-wrap: nowrap;
+    }
+
+    .screensaver-card .scene-info strong {
+      font-size: 17px;
+    }
+
+    .screensaver-card .scene-info p {
+      line-height: 1.4;
+      margin: 0;
+      color: rgba(255,255,255,0.56);
+    }
+
+    .screensaver-action {
+      min-width: 90px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.92);
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .screensaver-settings {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .screensaver-setting-row {
+      display: grid;
+      grid-template-columns: 96px minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .screensaver-setting-row strong {
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .screensaver-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .screensaver-option {
+      padding: 8px 12px;
+      border-radius: 999px;
+      color: rgba(255,255,255,0.72);
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 12px;
+    }
+
+    .screensaver-option.is-active,
+    .screensaver-option.is-focused {
+      color: rgba(255,255,255,0.96);
+      background: rgba(130,180,255,0.18);
+      border-color: rgba(160,205,255,0.3);
+    }
+
+    .kicker:empty {
+      display: none;
+    }
+
+    .setting-card {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .setting-card h4 {
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+
+    .setting-card > p {
+      font-size: 13px;
+      line-height: 1.75;
+      color: var(--text-2);
+      margin-top: -6px;
+    }
+
+    .setting-card.is-focused {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.16);
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.06);
+    }
+
+    .season-option {
+      padding: 18px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      text-align: left;
+      transition: transform .24s var(--ease), background .24s ease, border-color .24s ease, box-shadow .24s ease;
+    }
+
+    .season-option strong {
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+
+    .season-option span {
+      font-size: 13px;
+      line-height: 1.75;
+      color: var(--text-2);
+    }
+
+    .season-option:hover,
+    .season-option.is-current,
+    .season-option.is-focused {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.16);
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.06);
+      outline: none;
+    }
+
+    .setting-row.is-focused,
+    .range-group.is-focused {
+      padding: 10px 10px;
+      margin: -10px -10px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .setting-row.disabled {
+      opacity: 0.42;
+      pointer-events: none;
+    }
+
+    .setting-label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .setting-label strong {
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .setting-label span {
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--text-2);
+    }
+
+    .switch {
+      position: relative;
+      width: 58px;
+      height: 32px;
+      flex: 0 0 auto;
+    }
+
+    .switch input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .switch-track {
+      width: 100%;
+      height: 100%;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.16);
+      border: 1px solid rgba(255,255,255,0.12);
+      transition: background .24s ease;
+    }
+
+    .switch-thumb {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.96);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+      transition: transform .24s var(--ease);
+    }
+
+    .switch input:checked + .switch-track {
+      background: linear-gradient(135deg, rgba(173,221,255,0.62), rgba(135,196,255,0.48));
+    }
+
+    .switch input:checked ~ .switch-thumb {
+      transform: translateX(26px);
+    }
+
+    .switch.disabled {
+      opacity: 0.42;
+      pointer-events: none;
+    }
+
+    .range-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .range-group.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .range-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 14px;
+      color: rgba(255,255,255,0.92);
+    }
+
+    .range-note {
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--text-2);
+    }
+
+    .range-group input[type="range"] {
+      width: 100%;
+      accent-color: #ebf8ff;
+    }
+
+    .immersive-view,
+    .sleep-view,
+    .black-view {
+      position: absolute;
+      inset: 0;
+      z-index: 14;
+      display: none;
+    }
+
+    .immersive-view.active,
+    .sleep-view.active,
+    .black-view.active {
+      display: flex;
+    }
+
+    .immersive-view {
+      padding: 24px;
+      background:
+        linear-gradient(180deg, rgba(6, 12, 18, 0.16), rgba(6, 12, 18, 0.3)),
+        linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+    }
+
+    .immersive-shell {
+      position: relative;
+      flex: 1;
+      border-radius: 34px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 40px 100px rgba(0,0,0,0.32);
+      background: rgba(0,0,0,0.16);
+    }
+
+    .immersive-shell .window-media {
+      transform: scale(1.06);
+    }
+
+    .immersive-controls {
+      position: absolute;
+      right: 24px;
+      bottom: 24px;
+      z-index: 2;
+      display: flex;
+      gap: 12px;
+    }
+
+    .ghost-chip {
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      font-size: 14px;
+      letter-spacing: 0.04em;
+      color: rgba(255,255,255,0.92);
+    }
+
+    .sleep-view {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 34px;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06), transparent 34%),
+        #020407;
+      z-index: 16;
+    }
+
+    .sleep-bg {
+      position: absolute;
+      inset: 0;
+      background-position: center;
+      background-size: cover;
+      opacity: 0.12;
+      filter: saturate(0.42) brightness(0.46);
+      transform: scale(1.06);
+    }
+
+    .sleep-panel,
+    .sleep-feed,
+    .sleep-hint {
+      position: relative;
+      z-index: 2;
+    }
+
+    .sleep-panel {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .sleep-time {
+      font-size: clamp(84px, 12vw, 176px);
+      line-height: .92;
+      font-weight: 300;
+      letter-spacing: -0.04em;
+      color: rgba(255,255,255,0.86);
+    }
+
+    .sleep-date {
+      font-size: 22px;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.68);
+    }
+
+    .sleep-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+      font-size: 14px;
+      color: rgba(255,255,255,0.76);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .sleep-feed {
+      width: min(74vw, 980px);
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .sleep-card {
+      min-height: 124px;
+      padding: 18px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .sleep-card strong {
+      font-size: 13px;
+      letter-spacing: 0.16em;
+      color: rgba(255,255,255,0.44);
+      text-transform: uppercase;
+    }
+
+    .sleep-card p {
+      font-size: 15px;
+      line-height: 1.8;
+      color: rgba(255,255,255,0.84);
+    }
+
+    .sleep-hint {
+      color: rgba(255,255,255,0.48);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+    }
+
+    .black-view {
+      z-index: 17;
+      background: #000;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 48px;
+    }
+
+    .black-hint {
+      color: rgba(255,255,255,0.22);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+    }
+
+    .toast,
+    .prompt {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%) translateY(18px);
+      z-index: 18;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .26s var(--ease), transform .26s var(--ease);
+    }
+
+    .toast {
+      bottom: 36px;
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: rgba(10, 16, 24, 0.54);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      color: rgba(255,255,255,0.94);
+    }
+
+    .prompt {
+      bottom: 72px;
+      min-width: 440px;
+      max-width: 70vw;
+      padding: 16px 18px;
+      border-radius: 24px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08)),
+        rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.16);
+      backdrop-filter: blur(18px) saturate(130%);
+      -webkit-backdrop-filter: blur(18px) saturate(130%);
+      box-shadow: 0 26px 62px rgba(0,0,0,0.24);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      color: rgba(255,255,255,0.95);
+    }
+
+    .status-badges {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-end;
+      pointer-events: none;
+    }
+
+    .status-badge {
+      height: 34px;
+      min-width: 34px;
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border-radius: 999px;
+      background: rgba(12,18,26,0.22);
+      border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 10px 24px rgba(0,0,0,0.12);
+      color: rgba(255,255,255,0.95);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+    }
+
+    .status-badge svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .status-badge.screensaver {
+      background: rgba(120,164,220,0.22);
+      border-color: rgba(170,210,255,0.24);
+    }
+
+    .prompt.dark {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04)),
+        rgba(8,8,9,0.76);
+      border-color: rgba(255,255,255,0.08);
+    }
+
+    .toast.show,
+    .prompt.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .prompt-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .prompt-title {
+      font-size: 15px;
+      letter-spacing: 0.04em;
+    }
+
+    .prompt-sub {
+      font-size: 12px;
+      color: rgba(255,255,255,0.64);
+      letter-spacing: 0.04em;
+    }
+
+    .prompt-count {
+      min-width: 42px;
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.14);
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    @media (max-width: 1500px) {
+      .home-stage {
+        grid-template-columns: minmax(84px, 176px) minmax(720px, 1fr) minmax(84px, 176px);
+      }
+
+      .preview-slot {
+        height: min(48vh, 420px);
+      }
+
+      .stage-arrow.left { left: calc(50% - 522px); }
+      .stage-arrow.right { right: calc(50% - 522px); }
+
+      .status-chip {
+        min-width: 0;
+      }
+
+      .play-rail {
+        right: calc((100vw - var(--play-stage-width)) / 2 + 14px);
+      }
+
+      .rail-btn {
+        width: 58px;
+        min-width: 58px;
+        height: 58px;
+      }
+
+      .rail-btn.is-focused,
+      .rail-btn:hover {
+        width: 158px;
+      }
+
+      .home-quick-actions {
+        left: calc(100% + 16px);
+        top: 5%;
+      }
+
+      .home-quick-action {
+        width: 128px;
+      }
+    }
+
+    @media (max-width: 1180px) {
+      .shell {
+        padding: 26px 24px;
+      }
+
+      .home-stage {
+        gap: 16px;
+        grid-template-columns: minmax(66px, 126px) minmax(560px, 1fr) minmax(66px, 126px);
+      }
+
+      .preview-slot {
+        height: min(38vh, 320px);
+      }
+
+      .stage-arrow.left { left: calc(50% - 404px); }
+      .stage-arrow.right { right: calc(50% - 404px); }
+
+      .toolbar {
+        gap: 12px;
+      }
+
+      .play-view {
+        padding: 0;
+      }
+
+      .play-rail {
+        right: calc((100vw - var(--play-stage-width)) / 2 + 10px);
+        gap: 14px;
+      }
+
+      .rail-btn {
+        width: 54px;
+        min-width: 54px;
+        height: 54px;
+        padding: 0 14px;
+      }
+
+      .rail-btn span {
+        font-size: 15px;
+      }
+
+      .rail-btn.is-focused,
+      .rail-btn:hover {
+        width: 148px;
+      }
+
+      .home-quick-actions {
+        left: auto;
+        right: 18px;
+        top: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="ambient" id="ambient"></div>
+    <div class="grain"></div>
+
+    <div class="shell">
+      <section class="view home-view active" id="homeView">
+        <header class="topbar">
+          <div class="brand">
+            <svg class="brand-mark" viewBox="0 0 52 72">
+              <path d="M8 64V28c0-10 8-18 18-18s18 8 18 18v36H8Z"/>
+              <path d="M26 10v54"/>
+              <path d="M8 40h36"/>
+              <path d="M16 18c2 6 6 10 10 10s8-4 10-10"/>
+            </svg>
+            <div class="brand-copy">
+              <h1>窗景</h1>
+              <p>每一扇窗，连接一处真实风景。</p>
+            </div>
+          </div>
+
+          <div class="toolbar" id="homeToolbar">
+            <div class="toolbar-item">
+              <button class="icon-btn" data-home-action="screensaver" aria-label="&#23631;&#20445;">
+                <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="11" rx="2.5"/><path d="M8 20h8"/><path d="M12 16v4"/><path d="M15.5 9.5a3.5 3.5 0 1 1-4.9 4.7 4.3 4.3 0 0 0 4.9-4.7Z"/></svg>
+              </button>
+              <label>&#23631;&#20445;</label>
+            </div>
+            <div class="toolbar-item">
+              <button class="icon-btn" data-home-action="menu" aria-label="&#21015;&#34920;">
+                <svg viewBox="0 0 24 24"><rect x="4" y="5" width="6" height="6" rx="1.5"/><rect x="14" y="5" width="6" height="6" rx="1.5"/><rect x="4" y="15" width="6" height="4" rx="1.2"/><path d="M14 16h6"/><path d="M14 19h4"/></svg>
+              </button>
+              <label>&#21015;&#34920;</label>
+            </div>
+            <div class="toolbar-item">
+              <button class="icon-btn" data-home-action="settings" aria-label="&#35774;&#32622;">
+                <svg viewBox="0 0 24 24"><path d="M5 6h14"/><path d="M8 6v12"/><path d="M16 6v12"/><path d="M5 12h14"/><circle cx="8" cy="12" r="2.2"/><circle cx="16" cy="18" r="2.2"/></svg>
+              </button>
+              <label>&#35774;&#32622;</label>
+            </div>
+          </div>
+        </header>
+
+        <div class="home-stage">
+          <button class="preview-slot left" id="prevButton" aria-label="上一个窗景"></button>
+          <button class="stage-arrow left" id="leftStageArrow" aria-label="向左切换">
+            <svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></svg>
+          </button>
+
+          <div class="hero-stage">
+            <div class="hero-title-group">
+              <span class="kicker" id="homeKicker"></span>
+              <h2 id="homeTitle"></h2>
+              <p id="homeDesc"></p>
+            </div>
+
+            <div class="home-hero-wrap">
+              <button class="window-shell hero is-focused" id="heroWindow" aria-label="&#36827;&#20837;&#31383;&#26223;"></button>
+              <div class="home-quick-actions" id="homeQuickActions">
+                <button class="home-quick-action" id="homeFavoriteAction" aria-label="&#25910;&#34255;&#24403;&#21069;&#31383;&#26223;">
+                  <svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.4-8.4-7.2C1.2 9.4 2.6 5.8 6.6 5.3c2-.2 3.5.7 4.4 2 1-1.3 2.5-2.2 4.4-2 4 .5 5.4 4.1 3 7.5C18.5 15.6 12 20 12 20Z"/></svg>
+                  <span>&#25910;&#34255;</span>
+                </button>
+                <button class="home-quick-action" id="homeScreensaverAction" aria-label="&#35774;&#20026;&#23631;&#20445;">
+                  <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="10" rx="2"/><path d="M9 19h6"/><path d="M12 15v4"/></svg>
+                  <span>&#35774;&#20026;&#23631;&#20445;</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="scene-dots" id="sceneDots"></div>
+            <nav class="category-nav" id="categoryNav" aria-label="内容分类"></nav>
+
+            <div class="home-hint">
+              <span>方向键：切换 / 移动焦点</span>
+              <span>OK：进入窗景</span>
+              <span>菜单键 M：场景列表</span>
+              <span>设置键 S：打开设置</span>
+            </div>
+          </div>
+
+          <button class="stage-arrow right" id="rightStageArrow" aria-label="向右切换">
+            <svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>
+          </button>
+          <button class="preview-slot right" id="nextButton" aria-label="下一个窗景"></button>
+        </div>
+      </section>
+
+      <section class="view play-view" id="playView">
+        <div class="play-top">
+          <button class="back-chip" id="backButton">← 返回首页</button>
+          <button class="icon-btn" id="playSettings" aria-label="打开设置">
+            <svg viewBox="0 0 24 24"><path d="M5 6h14"/><path d="M8 6v12"/><path d="M16 6v12"/><path d="M5 12h14"/><circle cx="8" cy="12" r="2.2"/><circle cx="16" cy="18" r="2.2"/></svg>
+          </button>
+        </div>
+
+        <div class="play-main">
+          <div class="play-stage">
+            <div class="play-window-wrap">
+              <div class="window-shell play" id="playWindow"></div>
+            </div>
+          </div>
+
+          <nav class="play-rail" id="playRail">
+            <button class="rail-btn is-focused" data-rail-action="season">
+              <svg viewBox="0 0 24 24"><path d="M5 16.5c1.8-3.1 4.2-4.8 7.1-4.8 2.8 0 5.1 1.6 6.9 4.8"/><path d="M12 4.5v2.8"/><path d="M6.6 7.1 8.5 9"/><path d="M17.4 7.1 15.5 9"/><path d="M4.5 16.5h15"/></svg>
+              <span>&#26102;&#23395;&#35843;&#33410;</span>
+            </button>
+            <button class="rail-btn" data-rail-action="immersive">
+              <svg viewBox="0 0 24 24"><path d="M4 9V5h4"/><path d="M20 9V5h-4"/><path d="M4 15v4h4"/><path d="M20 15v4h-4"/><path d="M9 9h6v6H9z"/></svg>
+              <span>&#27785;&#28024;&#31354;&#38388;</span>
+            </button>
+          </nav>
+
+          <div class="season-panel" id="seasonPanel" aria-label="&#26102;&#23395;&#35843;&#33410;&#38754;&#26495;">
+            <div class="season-actions">
+              <button class="season-random" id="seasonRandom"><span class="pick-icon">&#10022;</span><strong>&#38543;&#26426;</strong></button>
+              <button class="season-reset" id="seasonReset"><span class="pick-icon">&#8634;</span><strong>&#22238;&#24402;</strong></button>
+            </div>
+            <div class="season-group" data-season-group="season">
+              <div class="season-group-title">&#23395;&#33410;</div>
+              <div class="season-options">
+                <button class="season-pick" data-season-type="season" data-season-value="&#26149;"><span class="pick-icon">&#127793;</span><strong>&#26149;</strong></button>
+                <button class="season-pick" data-season-type="season" data-season-value="&#22799;"><span class="pick-icon">&#9728;</span><strong>&#22799;</strong></button>
+                <button class="season-pick" data-season-type="season" data-season-value="&#31179;"><span class="pick-icon">&#127810;</span><strong>&#31179;</strong></button>
+                <button class="season-pick" data-season-type="season" data-season-value="&#20908;"><span class="pick-icon">&#10052;</span><strong>&#20908;</strong></button>
+              </div>
+            </div>
+            <div class="season-group" data-season-group="weather">
+              <div class="season-group-title">&#22825;&#27668;</div>
+              <div class="season-options">
+                <button class="season-pick" data-season-type="weather" data-season-value="&#38452;"><span class="pick-icon">&#9729;</span><strong>&#38452;</strong></button>
+                <button class="season-pick" data-season-type="weather" data-season-value="&#26228;"><span class="pick-icon">&#9728;</span><strong>&#26228;</strong></button>
+                <button class="season-pick" data-season-type="weather" data-season-value="&#38632;"><span class="pick-icon">&#127783;</span><strong>&#38632;</strong></button>
+                <button class="season-pick" data-season-type="weather" data-season-value="&#38634;"><span class="pick-icon">&#127784;</span><strong>&#38634;</strong></button>
+              </div>
+            </div>
+            <div class="season-group" data-season-group="period">
+              <div class="season-group-title">&#26102;&#27573;</div>
+              <div class="season-options">
+                <button class="season-pick" data-season-type="period" data-season-value="&#26216;"><span class="pick-icon">&#127749;</span><strong>&#26216;</strong></button>
+                <button class="season-pick" data-season-type="period" data-season-value="&#21320;"><span class="pick-icon">&#127961;</span><strong>&#21320;</strong></button>
+                <button class="season-pick" data-season-type="period" data-season-value="&#26286;"><span class="pick-icon">&#127751;</span><strong>&#26286;</strong></button>
+                <button class="season-pick" data-season-type="period" data-season-value="&#22812;"><span class="pick-icon">&#127769;</span><strong>&#22812;</strong></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="play-footer">
+          <div class="chip status-chip">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.8 2"/></svg>
+            <div class="status-copy">
+              <strong id="statusTitle"></strong>
+              <span id="statusSub"></span>
+            </div>
+          </div>
+
+          <div class="tv-keys">
+            <span>↑↓：场景 / 右侧菜单</span>
+            <span>←→：切换窗景</span>
+            <span>OK：确认</span>
+            <span>返回：Esc / Backspace</span>
+            <span>设置：S</span>
+            <span>菜单：M</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="immersive-view" id="immersiveView">
+      <div class="immersive-shell" id="immersiveShell"></div>
+      <div class="immersive-controls">
+        <button class="ghost-chip" id="immersivePrev">上一扇窗</button>
+        <button class="ghost-chip" id="immersiveExit">退出沉浸</button>
+        <button class="ghost-chip" id="immersiveNext">下一扇窗</button>
+      </div>
+    </section>
+
+    <section class="sleep-view" id="sleepView">
+      <div class="sleep-bg" id="sleepBg"></div>
+      <div class="sleep-panel">
+        <div class="sleep-time" id="sleepTime"></div>
+        <div class="sleep-date" id="sleepDate"></div>
+        <div class="sleep-meta" id="sleepMeta"></div>
+      </div>
+      <div class="sleep-feed" id="sleepFeed"></div>
+      <div class="sleep-hint">任意按键返回首页（模拟从息屏进入任意页面）</div>
+    </section>
+
+    <section class="black-view" id="blackView">
+      <div class="black-hint">黑屏状态 · 任意按键返回 Launcher</div>
+    </section>
+
+    <div class="drawer-mask" id="drawerMask"></div>
+    <aside class="drawer" id="drawer"></aside>
+
+    <div class="prompt" id="prompt"></div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script>
+    function toFileUrl(path) {
+      return `file:///${path.replace(/\\/g, "/").split("/").map(encodeURIComponent).join("/")}`;
+    }
+
+    const sceneSeeds = [
+      {
+        id: "westlake",
+        title: "映像·西湖",
+        shortTitle: "西湖",
+        category: "West Lake",
+        heroTitle: "湖山清晓",
+        heroLine: "西湖当地同步窗景",
+        description: "真实在地同步",
+        detail: "时间、天气、季节同步更新。",
+        location: "中国 · 浙江 · 杭州",
+        scenicLabel: "西湖真实窗景",
+        fallbackWeather: "多云 22°C",
+        timezone: "Asia/Shanghai",
+        latitude: 30.2486,
+        longitude: 120.1307,
+        palette: { top: "#dde0d4", bottom: "#8e9b8e" },
+        frame: { base: "rgba(133,104,73,0.46)", edge: "rgba(255,239,220,0.42)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\西湖.png"),
+        tags: ["中式", "雅致", "木质"]
+      },
+      {
+        id: "seaside",
+        title: "映像·海边",
+        shortTitle: "海边",
+        category: "Seaside",
+        heroTitle: "海风帆影",
+        heroLine: "轻盈通透的海边窗景",
+        description: "通透轻盈",
+        detail: "保留真实图片的海风与光感。",
+        location: "希腊 · 圣托里尼",
+        scenicLabel: "海边真实窗景",
+        fallbackWeather: "晴 24°C",
+        timezone: "Europe/Athens",
+        latitude: 36.3932,
+        longitude: 25.4615,
+        palette: { top: "#e5ebec", bottom: "#7ea6bc" },
+        frame: { base: "rgba(244,242,237,0.58)", edge: "rgba(255,255,255,0.52)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\海边.png"),
+        tags: ["现代", "通透", "奶油"]
+      },
+      {
+        id: "city",
+        title: "映像·城市",
+        shortTitle: "城市",
+        category: "City",
+        heroTitle: "都市微光",
+        heroLine: "摩登克制的城市窗景",
+        description: "都市灯影",
+        detail: "更摩登、更克制的城市窗景。",
+        location: "美国 · 纽约",
+        scenicLabel: "城市真实窗景",
+        fallbackWeather: "多云 16°C",
+        timezone: "America/New_York",
+        latitude: 40.7128,
+        longitude: -74.0060,
+        palette: { top: "#d3d1d3", bottom: "#5d5866" },
+        frame: { base: "rgba(230,232,236,0.52)", edge: "rgba(255,255,255,0.48)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\城市.png"),
+        tags: ["现代", "冷感", "金属"]
+      },
+      {
+        id: "forbidden",
+        title: "映像·故宫",
+        shortTitle: "故宫",
+        category: "Forbidden City",
+        heroTitle: "东方庭院",
+        heroLine: "故宫庭院真实窗景",
+        description: "东方庭院",
+        detail: "古建筑与庭院花木的真实空间感。",
+        location: "中国 · 北京",
+        scenicLabel: "故宫真实窗景",
+        fallbackWeather: "晴 20°C",
+        timezone: "Asia/Shanghai",
+        latitude: 39.9163,
+        longitude: 116.3972,
+        palette: { top: "#ead3c0", bottom: "#8c5344" },
+        frame: { base: "rgba(117,58,38,0.56)", edge: "rgba(255,230,210,0.26)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\故宫.png"),
+        tags: ["中式", "古典", "木质"]
+      },
+      {
+        id: "snowmountain",
+        title: "映像·雪山",
+        shortTitle: "雪山",
+        category: "Snow Mountain",
+        heroTitle: "雪峰晨光",
+        heroLine: "清冷纯净的高山窗景",
+        description: "清冷纯净",
+        detail: "雪峰、冷空气与晨光同步变化。",
+        location: "瑞士 · 采尔马特",
+        scenicLabel: "雪山真实窗景",
+        fallbackWeather: "晴 -2°C",
+        timezone: "Europe/Zurich",
+        latitude: 46.0207,
+        longitude: 7.7491,
+        palette: { top: "#d9e6f2", bottom: "#6483aa" },
+        frame: { base: "rgba(236,237,240,0.58)", edge: "rgba(255,255,255,0.54)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\雪山.png"),
+        tags: ["极简", "清冷", "石材"]
+      }
+    ];
+
+    const contentCategories = [
+      { key: "window", label: "窗景" },
+      { key: "heal", label: "治愈" },
+      { key: "moment", label: "时刻" },
+      { key: "gallery", label: "图册" },
+      { key: "album", label: "相册" }
+    ];
+
+    sceneSeeds.forEach((scene) => {
+      scene.group = "window";
+      scene.groupLabel = "窗景";
+    });
+
+    sceneSeeds.push(
+      {
+        id: "heal-forest",
+        group: "heal",
+        groupLabel: "治愈",
+        title: "治愈·林间呼吸",
+        shortTitle: "林间呼吸",
+        category: "Healing",
+        heroTitle: "林间呼吸",
+        heroLine: "给客厅留一段慢下来的自然声",
+        description: "疗愈解压",
+        detail: "适合休息、冥想、阅读前的轻量陪伴。",
+        location: "自然 · 森林",
+        scenicLabel: "疗愈自然场景",
+        fallbackWeather: "舒缓 24°C",
+        timezone: "Asia/Shanghai",
+        latitude: 22.5431,
+        longitude: 114.0579,
+        palette: { top: "#dbe6d8", bottom: "#637f70" },
+        frame: { base: "rgba(132,154,130,0.46)", edge: "rgba(244,255,236,0.42)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\治愈1.png"),
+        tags: ["自然", "放松", "原木"]
+      },
+      {
+        id: "heal-lake",
+        group: "heal",
+        groupLabel: "治愈",
+        title: "治愈·静水微光",
+        shortTitle: "静水微光",
+        category: "Healing",
+        heroTitle: "静水微光",
+        heroLine: "低干扰的水面节奏，适合夜间放松",
+        description: "疗愈解压",
+        detail: "以轻微动态与柔和光感营造安定氛围。",
+        location: "自然 · 湖畔",
+        scenicLabel: "疗愈水景场景",
+        fallbackWeather: "平静 23°C",
+        timezone: "Asia/Shanghai",
+        latitude: 22.5431,
+        longitude: 114.0579,
+        palette: { top: "#d7e6e5", bottom: "#6a8d92" },
+        frame: { base: "rgba(128,164,166,0.46)", edge: "rgba(240,255,255,0.42)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\治愈2.png"),
+        tags: ["静谧", "水景", "浅色"]
+      },
+      {
+        id: "heal-cloud",
+        group: "heal",
+        groupLabel: "治愈",
+        title: "治愈·云上小憩",
+        shortTitle: "云上小憩",
+        category: "Healing",
+        heroTitle: "云上小憩",
+        heroLine: "把压力放轻，让画面像呼吸一样慢",
+        description: "疗愈解压",
+        detail: "适合午后休息与睡前过渡。",
+        location: "自然 · 云境",
+        scenicLabel: "疗愈云景场景",
+        fallbackWeather: "轻盈 22°C",
+        timezone: "Asia/Shanghai",
+        latitude: 22.5431,
+        longitude: 114.0579,
+        palette: { top: "#e7e3dd", bottom: "#9aaabb" },
+        frame: { base: "rgba(220,222,222,0.5)", edge: "rgba(255,255,255,0.46)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\治愈3.png"),
+        tags: ["柔和", "睡前", "奶油"]
+      },
+      {
+        id: "heal-garden",
+        group: "heal",
+        groupLabel: "治愈",
+        title: "治愈·庭院慢坐",
+        shortTitle: "庭院慢坐",
+        category: "Healing",
+        heroTitle: "庭院慢坐",
+        heroLine: "像在安静庭院里坐一会儿",
+        description: "疗愈解压",
+        detail: "让家庭空间保持温柔的背景陪伴。",
+        location: "自然 · 庭院",
+        scenicLabel: "疗愈庭院场景",
+        fallbackWeather: "温柔 25°C",
+        timezone: "Asia/Shanghai",
+        latitude: 22.5431,
+        longitude: 114.0579,
+        palette: { top: "#e1d8c8", bottom: "#85745f" },
+        frame: { base: "rgba(160,128,94,0.46)", edge: "rgba(255,236,210,0.42)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\治愈4.png"),
+        tags: ["温暖", "庭院", "松弛"]
+      },
+      {
+        id: "moment-birthday",
+        group: "moment",
+        groupLabel: "时刻",
+        title: "时刻·生日祝福",
+        shortTitle: "生日祝福",
+        category: "Life Moment",
+        heroTitle: "生日祝福",
+        heroLine: "让电视成为重要时刻的仪式入口",
+        description: "人生时刻",
+        detail: "适合生日、聚会、家庭合影前的氛围展示。",
+        location: "家庭 · 祝福",
+        scenicLabel: "人生时刻场景",
+        fallbackWeather: "喜悦 26°C",
+        timezone: "Asia/Shanghai",
+        latitude: 22.5431,
+        longitude: 114.0579,
+        palette: { top: "#efd8dc", bottom: "#9d6b76" },
+        frame: { base: "rgba(196,132,146,0.46)", edge: "rgba(255,230,236,0.42)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\时刻1.jpg"),
+        tags: ["仪式", "家庭", "温暖"]
+      },
+      {
+        id: "moment-reunion",
+        group: "moment",
+        groupLabel: "时刻",
+        title: "时刻·团圆晚餐",
+        shortTitle: "团圆晚餐",
+        category: "Life Moment",
+        heroTitle: "团圆晚餐",
+        heroLine: "为聚会与节日保留一层温柔背景",
+        description: "人生时刻",
+        detail: "适合节日、朋友来访与家庭团聚。",
+        location: "家庭 · 团圆",
+        scenicLabel: "人生时刻场景",
+        fallbackWeather: "暖意 25°C",
+        timezone: "Asia/Shanghai",
+        latitude: 22.5431,
+        longitude: 114.0579,
+        palette: { top: "#ead9bf", bottom: "#987057" },
+        frame: { base: "rgba(178,128,82,0.46)", edge: "rgba(255,234,204,0.42)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\时刻2.jpg"),
+        tags: ["节日", "团聚", "暖色"]
+      },
+      {
+        id: "gallery-art-1",
+        group: "gallery",
+        groupLabel: "图册",
+        title: "图册·轻艺术",
+        shortTitle: "轻艺术",
+        category: "Art Gallery",
+        heroTitle: "轻艺术",
+        heroLine: "像一面会呼吸的家庭艺廊",
+        description: "静态图册",
+        detail: "适合营造客厅的艺术陈列感。",
+        location: "艺术 · 图册",
+        scenicLabel: "艺术图册",
+        fallbackWeather: "艺廊 21°C",
+        timezone: "Asia/Shanghai",
+        latitude: 22.5431,
+        longitude: 114.0579,
+        palette: { top: "#e6ded1", bottom: "#7d756d" },
+        frame: { base: "rgba(204,196,184,0.46)", edge: "rgba(255,250,238,0.42)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\艺术1.jpg"),
+        tags: ["艺术", "极简", "策展"]
+      },
+      {
+        id: "gallery-art-2",
+        group: "gallery",
+        groupLabel: "图册",
+        title: "图册·抽象色块",
+        shortTitle: "抽象色块",
+        category: "Art Gallery",
+        heroTitle: "抽象色块",
+        heroLine: "用色彩为空间建立轻盈的视觉焦点",
+        description: "静态图册",
+        detail: "适合现代、轻奢与年轻化空间。",
+        location: "艺术 · 图册",
+        scenicLabel: "艺术图册",
+        fallbackWeather: "艺廊 22°C",
+        timezone: "Asia/Shanghai",
+        latitude: 22.5431,
+        longitude: 114.0579,
+        palette: { top: "#dcd7df", bottom: "#776d87" },
+        frame: { base: "rgba(154,144,168,0.46)", edge: "rgba(245,240,255,0.42)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\艺术2.jpg"),
+        tags: ["现代", "色彩", "轻奢"]
+      },
+      {
+        id: "gallery-art-3",
+        group: "gallery",
+        groupLabel: "图册",
+        title: "图册·静物诗",
+        shortTitle: "静物诗",
+        category: "Art Gallery",
+        heroTitle: "静物诗",
+        heroLine: "让画面像酒店入口的一件安静装置",
+        description: "静态图册",
+        detail: "适合玄关、客厅与安静会客场景。",
+        location: "艺术 · 图册",
+        scenicLabel: "艺术图册",
+        fallbackWeather: "艺廊 22°C",
+        timezone: "Asia/Shanghai",
+        latitude: 22.5431,
+        longitude: 114.0579,
+        palette: { top: "#e2d9cf", bottom: "#887462" },
+        frame: { base: "rgba(170,146,120,0.46)", edge: "rgba(255,239,220,0.42)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\艺术3.jpg"),
+        tags: ["静物", "高级", "酒店感"]
+      },
+      {
+        id: "album-memory-1",
+        group: "album",
+        groupLabel: "相册",
+        title: "相册·旅行回忆",
+        shortTitle: "旅行回忆",
+        category: "Smart Album",
+        heroTitle: "旅行回忆",
+        heroLine: "把照片变成可以停留的家庭风景",
+        description: "智能相册",
+        detail: "适合家庭照片、旅行纪念与日常回忆。",
+        location: "相册 · 家庭",
+        scenicLabel: "智能相册",
+        fallbackWeather: "回忆 24°C",
+        timezone: "Asia/Shanghai",
+        latitude: 22.5431,
+        longitude: 114.0579,
+        palette: { top: "#e8ded7", bottom: "#836d63" },
+        frame: { base: "rgba(178,150,132,0.46)", edge: "rgba(255,238,228,0.42)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\相册1.jpg"),
+        tags: ["家庭", "回忆", "温暖"]
+      },
+      {
+        id: "album-memory-2",
+        group: "album",
+        groupLabel: "相册",
+        title: "相册·最近精选",
+        shortTitle: "最近精选",
+        category: "Smart Album",
+        heroTitle: "最近精选",
+        heroLine: "从最近照片里自动挑出适合大屏的瞬间",
+        description: "智能相册",
+        detail: "适合日常照片轮播与家庭分享。",
+        location: "相册 · 家庭",
+        scenicLabel: "智能相册",
+        fallbackWeather: "回忆 24°C",
+        timezone: "Asia/Shanghai",
+        latitude: 22.5431,
+        longitude: 114.0579,
+        palette: { top: "#dfe2df", bottom: "#737e7b" },
+        frame: { base: "rgba(138,154,150,0.46)", edge: "rgba(244,255,250,0.42)" },
+        image: toFileUrl("C:\\Users\\jiaqi4.ma\\Desktop\\窗景 图\\相册2.jpg"),
+        tags: ["精选", "家庭", "日常"]
+      }
+    );
+
+    const state = {
+      index: 0,
+      categoryKey: "window",
+      categoryFocusIndex: 0,
+      page: "home",
+      drawer: null,
+      drawerFocusIndex: 0,
+      homeFocusZone: "hero",
+      toolbarIndex: 0,
+      playFocusZone: "rail",
+      railIndex: 0,
+      lastInteractionAt: Date.now(),
+      sleepStartedAt: null,
+      overlayVisible: true,
+      overlayTimer: null,
+      playOpening: false,
+      playOpeningTimer: null,
+      seasonPanelOpen: false,
+      seasonFocusIndex: 0,
+      sceneFading: false,
+      visualRealtime: true,
+      visualPreset: { season: "\u6625", weather: "\u6674", period: "\u6668" },
+      visualByScene: {},
+      promptType: null,
+      promptCountdown: 0,
+      sceneTransitionDirection: "right",
+      weatherRefreshToken: 0,
+      settings: {
+        showInfo: true,
+        autoplayHome: false,
+        autoplayInterval: 15,
+        allowSleep: true,
+        sleepTimeout: 45,
+        allowBlack: true,
+        blackTimeout: 90,
+        screensaverStartTime: 3,
+        screensaverPlayMode: "fixed",
+        screensaverInfoMode: "auto",
+        reduceMotion: false
+      },
+      screensaverSceneId: "westlake",
+      weatherByScene: {},
+      favorites: new Set()
+    };
+
+    const storageKey = "a500-window-demo-v4";
+
+    const el = {
+      ambient: document.getElementById("ambient"),
+      homeView: document.getElementById("homeView"),
+      playView: document.getElementById("playView"),
+      immersiveView: document.getElementById("immersiveView"),
+      sleepView: document.getElementById("sleepView"),
+      blackView: document.getElementById("blackView"),
+      homeToolbar: document.getElementById("homeToolbar"),
+      homeKicker: document.getElementById("homeKicker"),
+      homeTitle: document.getElementById("homeTitle"),
+      homeDesc: document.getElementById("homeDesc"),
+      prevButton: document.getElementById("prevButton"),
+      nextButton: document.getElementById("nextButton"),
+      leftStageArrow: document.getElementById("leftStageArrow"),
+      rightStageArrow: document.getElementById("rightStageArrow"),
+      heroWindow: document.getElementById("heroWindow"),
+      homeQuickActions: document.getElementById("homeQuickActions"),
+      homeFavoriteAction: document.getElementById("homeFavoriteAction"),
+      homeScreensaverAction: document.getElementById("homeScreensaverAction"),
+      sceneDots: document.getElementById("sceneDots"),
+      categoryNav: document.getElementById("categoryNav"),
+      playWindow: document.getElementById("playWindow"),
+      backButton: document.getElementById("backButton"),
+      playSettings: document.getElementById("playSettings"),
+      playRail: document.getElementById("playRail"),
+      seasonPanel: document.getElementById("seasonPanel"),
+      seasonRandom: document.getElementById("seasonRandom"),
+      seasonReset: document.getElementById("seasonReset"),
+      statusTitle: document.getElementById("statusTitle"),
+      statusSub: document.getElementById("statusSub"),
+      immersiveShell: document.getElementById("immersiveShell"),
+      immersivePrev: document.getElementById("immersivePrev"),
+      immersiveNext: document.getElementById("immersiveNext"),
+      immersiveExit: document.getElementById("immersiveExit"),
+      sleepBg: document.getElementById("sleepBg"),
+      sleepTime: document.getElementById("sleepTime"),
+      sleepDate: document.getElementById("sleepDate"),
+      sleepMeta: document.getElementById("sleepMeta"),
+      sleepFeed: document.getElementById("sleepFeed"),
+      drawerMask: document.getElementById("drawerMask"),
+      drawer: document.getElementById("drawer"),
+      prompt: document.getElementById("prompt"),
+      toast: document.getElementById("toast")
+    };
+
+    let homeAutoplayTimer = null;
+    let promptTimer = null;
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function persist() {
+      localStorage.setItem(storageKey, JSON.stringify({
+        index: state.index,
+        categoryKey: state.categoryKey,
+        settings: state.settings,
+        screensaverSceneId: state.screensaverSceneId,
+        visualRealtime: state.visualRealtime,
+        visualPreset: state.visualPreset,
+        visualByScene: state.visualByScene,
+        favorites: [...state.favorites]
+      }));
+    }
+
+    function loadPersisted() {
+      try {
+        const raw = localStorage.getItem(storageKey);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (contentCategories.some((category) => category.key === data.categoryKey)) state.categoryKey = data.categoryKey;
+        if (typeof data.index === "number") state.index = data.index % currentItems().length;
+        state.categoryFocusIndex = contentCategories.findIndex((category) => category.key === state.categoryKey);
+        if (data.settings) state.settings = { ...state.settings, ...data.settings };
+        if ("screensaverSceneId" in data) state.screensaverSceneId = data.screensaverSceneId;
+        if (typeof data.visualRealtime === "boolean") state.visualRealtime = data.visualRealtime;
+        if (data.visualPreset) state.visualPreset = { ...state.visualPreset, ...data.visualPreset };
+        if (data.visualByScene && typeof data.visualByScene === "object") state.visualByScene = data.visualByScene;
+        if (Array.isArray(data.favorites)) state.favorites = new Set(data.favorites);
+      } catch (error) {
+        console.warn("读取本地状态失败", error);
+      }
+      normalizeVisualPreset();
+      normalizeSettings();
+    }
+
+    function normalizeVisualPreset() {
+      const valid = {
+        season: ["\u6625", "\u590f", "\u79cb", "\u51ac"],
+        weather: ["\u9634", "\u6674", "\u96e8", "\u96ea"],
+        period: ["\u6668", "\u5348", "\u66ae", "\u591c"]
+      };
+      state.visualPreset = {
+        season: valid.season.includes(state.visualPreset?.season) ? state.visualPreset.season : "\u6625",
+        weather: valid.weather.includes(state.visualPreset?.weather) ? state.visualPreset.weather : "\u6674",
+        period: valid.period.includes(state.visualPreset?.period) ? state.visualPreset.period : "\u6668"
+      };
+    }
+
+    function sceneVisualState(scene = currentScene()) {
+      const saved = state.visualByScene?.[scene.id];
+      if (saved && saved.preset) {
+        return {
+          realtime: saved.realtime !== false,
+          preset: {
+            season: saved.preset.season || "\u6625",
+            weather: saved.preset.weather || "\u6674",
+            period: saved.preset.period || "\u6668"
+          }
+        };
+      }
+      return { realtime: true, preset: realtimeVisualPreset(scene) };
+    }
+
+    function saveSceneVisualState(scene, visualState) {
+      state.visualByScene = {
+        ...state.visualByScene,
+        [scene.id]: {
+          realtime: visualState.realtime !== false,
+          preset: { ...visualState.preset }
+        }
+      };
+      if (scene.id === currentScene().id) {
+        state.visualRealtime = visualState.realtime !== false;
+        state.visualPreset = { ...visualState.preset };
+      }
+    }
+
+    function syncCurrentVisualState() {
+      const visual = sceneVisualState(currentScene());
+      state.visualRealtime = visual.realtime;
+      state.visualPreset = { ...visual.preset };
+    }
+
+    function visualStatusLabel(scene = currentScene()) {
+      const visual = sceneVisualState(scene);
+      return visual.realtime ? "\u5b9e\u65f6\u540c\u6b65" : "\u5df2\u8c03\u8282";
+    }
+
+    function sceneListMeta(scene) {
+      const map = {
+        westlake: {
+          title: "\u6620\u50cf\u00b7\u897f\u6e56",
+          location: "\u4e2d\u56fd\u00b7\u676d\u5dde",
+          tags: ["\u4e2d\u5f0f", "\u96c5\u81f4", "\u6728\u8d28"]
+        },
+        seaside: {
+          title: "\u6620\u50cf\u00b7\u6d77\u8fb9",
+          location: "\u5e0c\u814a\u00b7\u5723\u6258\u91cc\u5c3c",
+          tags: ["\u73b0\u4ee3", "\u901a\u900f", "\u5976\u6cb9"]
+        },
+        city: {
+          title: "\u6620\u50cf\u00b7\u57ce\u5e02",
+          location: "\u7f8e\u56fd\u00b7\u7ebd\u7ea6",
+          tags: ["\u73b0\u4ee3", "\u51b7\u611f", "\u91d1\u5c5e"]
+        },
+        forbidden: {
+          title: "\u6620\u50cf\u00b7\u6545\u5bab",
+          location: "\u4e2d\u56fd\u00b7\u5317\u4eac",
+          tags: ["\u4e2d\u5f0f", "\u53e4\u5178", "\u6728\u8d28"]
+        },
+        snowmountain: {
+          title: "\u6620\u50cf\u00b7\u96ea\u5c71",
+          location: "\u745e\u58eb\u00b7\u91c7\u5c14\u9a6c\u7279",
+          tags: ["\u6781\u7b80", "\u6e05\u51b7", "\u77f3\u6750"]
+        }
+      };
+      return map[scene.id] || {
+        title: scene.title,
+        location: scene.location,
+        tags: scene.tags || []
+      };
+    }
+
+    function screensaverScene() {
+      return sceneSeeds.find((scene) => scene.id === state.screensaverSceneId) || null;
+    }
+
+    function recommendedScreensaverScenes() {
+      const hour = new Date().getHours();
+      const preferredIds = hour >= 19 || hour < 7
+        ? ["city", "seaside", "westlake"]
+        : ["westlake", "forbidden", "seaside"];
+      const picked = preferredIds
+        .map((id) => sceneSeeds.find((scene) => scene.id === id))
+        .filter(Boolean);
+      return [...picked, ...sceneSeeds.filter((scene) => !preferredIds.includes(scene.id))].slice(0, 2);
+    }
+
+    function resolveScreensaverStartScene() {
+      if (state.settings.screensaverPlayMode === "favorites") {
+        const favoriteScene = sceneSeeds.find((scene) => state.favorites.has(scene.id));
+        if (favoriteScene) return favoriteScene;
+      }
+      if (state.settings.screensaverPlayMode === "recommended") {
+        return recommendedScreensaverScenes()[0];
+      }
+      return screensaverScene();
+    }
+
+    function recommendationReason(scene) {
+      const map = {
+        westlake: "\u8bd7\u610f\u3001\u5b89\u9759\uff0c\u9002\u5408\u65e5\u5e38\u5ba2\u5385\u957f\u65f6\u95f4\u5c55\u793a",
+        seaside: "\u660e\u4eae\u3001\u653e\u677e\uff0c\u9002\u5408\u665a\u95f4\u4f11\u95f2\u548c\u8f7b\u76c8\u7a7a\u95f4",
+        city: "\u90fd\u5e02\u611f\u66f4\u5f3a\uff0c\u9002\u5408\u73b0\u4ee3\u3001\u8f7b\u5962\u6216\u79d1\u6280\u611f\u7a7a\u95f4",
+        forbidden: "\u4e1c\u65b9\u5ead\u9662\u6c14\u8d28\uff0c\u9002\u5408\u4e2d\u5f0f\u548c\u539f\u6728\u98ce\u7a7a\u95f4",
+        snowmountain: "\u6e05\u51b7\u7eaf\u51c0\uff0c\u9002\u5408\u6781\u7b80\u3001\u4f98\u5bc2\u6216\u51b7\u8272\u7cfb\u5bb6\u5c45"
+      };
+      return map[scene.id] || "\u9002\u5408\u4f5c\u4e3a\u5bb6\u5ead\u7a7a\u95f4\u7684\u957f\u65f6\u95f4\u7a97\u666f\u5c55\u793a";
+    }
+
+    function screensaverSettingLabel(type, value) {
+      const maps = {
+        start: { 1: "1\u5206\u949f", 3: "3\u5206\u949f", 5: "5\u5206\u949f", 10: "10\u5206\u949f" },
+        mode: { fixed: "\u56fa\u5b9a\u7a97\u666f", favorites: "\u6536\u85cf\u8f6e\u64ad", recommended: "\u4eca\u65e5\u63a8\u8350\u8f6e\u64ad" },
+        info: { auto: "\u663e\u793a3\u79d2\u540e\u9690\u85cf", always: "\u59cb\u7ec8\u663e\u793a", hidden: "\u59cb\u7ec8\u9690\u85cf" }
+      };
+      return maps[type]?.[value] || value;
+    }
+
+    function normalizeSettings() {
+      if (!state.settings.allowSleep) state.settings.allowBlack = false;
+      state.settings.autoplayInterval = clamp(state.settings.autoplayInterval, 8, 30);
+      state.settings.sleepTimeout = clamp(state.settings.sleepTimeout, 20, 180);
+      state.settings.blackTimeout = clamp(state.settings.blackTimeout, 30, 300);
+      state.settings.screensaverStartTime = clamp(Number(state.settings.screensaverStartTime) || 3, 1, 10);
+      if (!["fixed", "favorites", "recommended"].includes(state.settings.screensaverPlayMode)) {
+        state.settings.screensaverPlayMode = "fixed";
+      }
+      if (!["auto", "always", "hidden"].includes(state.settings.screensaverInfoMode)) {
+        state.settings.screensaverInfoMode = "auto";
+      }
+      if (state.screensaverSceneId && !sceneSeeds.some((scene) => scene.id === state.screensaverSceneId)) {
+        state.screensaverSceneId = "westlake";
+      }
+    }
+
+    function currentCategory() {
+      return contentCategories.find((category) => category.key === state.categoryKey) || contentCategories[0];
+    }
+
+    function currentItems() {
+      const items = sceneSeeds.filter((scene) => scene.group === currentCategory().key);
+      return items.length ? items : sceneSeeds;
+    }
+
+    function selectCategory(key, keepFocus = true) {
+      const index = contentCategories.findIndex((category) => category.key === key);
+      if (index < 0) return;
+      state.categoryKey = key;
+      state.categoryFocusIndex = index;
+      state.index = 0;
+      state.sceneTransitionDirection = keepFocus ? "right" : state.sceneTransitionDirection;
+      syncCurrentVisualState();
+      renderAll();
+      persist();
+    }
+
+    function selectSceneById(sceneId) {
+      const scene = sceneSeeds.find((item) => item.id === sceneId);
+      if (!scene) return;
+      const categoryIndex = contentCategories.findIndex((category) => category.key === scene.group);
+      state.categoryKey = scene.group || "window";
+      state.categoryFocusIndex = categoryIndex >= 0 ? categoryIndex : 0;
+      const items = currentItems();
+      const itemIndex = items.findIndex((item) => item.id === scene.id);
+      state.index = itemIndex >= 0 ? itemIndex : 0;
+      syncCurrentVisualState();
+      renderAll();
+      persist();
+    }
+
+    function currentScene(offset = 0) {
+      const items = currentItems();
+      const index = (state.index + offset + items.length) % items.length;
+      return items[index];
+    }
+
+    function currentWeather(scene = currentScene()) {
+      return state.weatherByScene[scene.id] || {
+        temperature: scene.fallbackWeather,
+        weatherText: scene.fallbackWeather.split(" ").slice(0, -1).join(" ") || scene.fallbackWeather,
+        temperatureText: scene.fallbackWeather.split(" ").at(-1) || "",
+        timeText: formatSceneTime(scene),
+        dateText: formatSceneDate(scene),
+        seasonText: seasonForScene(scene)
+      };
+    }
+
+    function formatSceneTime(scene) {
+      return new Intl.DateTimeFormat("zh-CN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+        timeZone: scene.timezone
+      }).format(new Date());
+    }
+
+    function formatSceneDate(scene) {
+      return new Intl.DateTimeFormat("zh-CN", {
+        month: "long",
+        day: "numeric",
+        weekday: "long",
+        timeZone: scene.timezone
+      }).format(new Date());
+    }
+
+    function monthInTimezone(timezone) {
+      const month = new Intl.DateTimeFormat("en-US", { month: "numeric", timeZone: timezone }).format(new Date());
+      return Number(month);
+    }
+
+    function seasonForScene(scene) {
+      const month = monthInTimezone(scene.timezone);
+      if ([3, 4, 5].includes(month)) return "\u6625\u5b63";
+      if ([6, 7, 8].includes(month)) return "\u590f\u5b63";
+      if ([9, 10, 11].includes(month)) return "\u79cb\u5b63";
+      return "\u51ac\u5b63";
+    }
+
+    function hourInTimezone(timezone) {
+      const hour = new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: timezone }).format(new Date());
+      return Number(hour);
+    }
+
+    function sceneFilter(scene, mode = "home") {
+      const weather = currentWeather(scene);
+      const hour = hourInTimezone(scene.timezone);
+      let brightness = 1;
+      let saturate = 1;
+      let sepia = 0;
+      let hue = 0;
+
+      if (hour < 6 || hour >= 19) {
+        brightness = 0.76;
+        saturate = 0.88;
+        hue = -6;
+      } else if (hour < 9) {
+        brightness = 1.05;
+        saturate = 1.04;
+        sepia = 0.06;
+      } else if (hour >= 16 && hour < 19) {
+        brightness = 1.02;
+        saturate = 1.02;
+        sepia = 0.08;
+      }
+
+      if (weather.weatherText.includes("多云") || weather.weatherText.includes("少云")) {
+        brightness -= 0.04;
+        saturate -= 0.03;
+      }
+      if (weather.weatherText.includes("雨") || weather.weatherText.includes("雾")) {
+        brightness -= 0.08;
+        saturate -= 0.12;
+      }
+
+      if (weather.seasonText === "春季") {
+        saturate += 0.03;
+      }
+      if (weather.seasonText === "秋季") {
+        sepia += 0.04;
+      }
+      if (weather.seasonText === "冬季") {
+        saturate -= 0.08;
+        brightness -= 0.02;
+      }
+
+      const visual = sceneVisualState(scene);
+      if (mode === "play" && !visual.realtime) {
+        const preset = visual.preset || {};
+        if (preset.period === "\u6668") { brightness += 0.06; saturate += 0.02; sepia += 0.04; }
+        if (preset.period === "\u5348") { brightness += 0.1; saturate += 0.04; }
+        if (preset.period === "\u66ae") { brightness -= 0.02; saturate += 0.02; sepia += 0.14; hue -= 8; }
+        if (preset.period === "\u591c") { brightness -= 0.34; saturate -= 0.18; hue -= 10; }
+        if (preset.weather === "\u9634") { brightness -= 0.08; saturate -= 0.08; }
+        if (preset.weather === "\u96e8") { brightness -= 0.14; saturate -= 0.14; hue -= 4; }
+        if (preset.weather === "\u96ea") { brightness += 0.07; saturate -= 0.16; sepia -= 0.02; }
+        if (preset.season === "\u6625") { saturate += 0.04; hue += 2; }
+        if (preset.season === "\u590f") { brightness += 0.04; saturate += 0.08; }
+        if (preset.season === "\u79cb") { sepia += 0.1; hue -= 6; }
+        if (preset.season === "\u51ac") { brightness -= 0.03; saturate -= 0.12; hue -= 4; }
+      }
+
+      brightness = clamp(brightness, 0.42, 1.22);
+      saturate = clamp(saturate, 0.48, 1.28);
+      sepia = clamp(sepia, 0, 0.36);
+
+      return `brightness(${brightness}) saturate(${saturate}) sepia(${sepia}) hue-rotate(${hue}deg)`;
+    }
+
+    function weatherTextFromCode(code) {
+      if (code === 0) return "\u6674";
+      if ([1].includes(code)) return "\u5927\u90e8\u6674\u6717";
+      if ([2].includes(code)) return "\u5c11\u4e91";
+      if ([3].includes(code)) return "\u591a\u4e91";
+      if ([45, 48].includes(code)) return "\u6709\u96fe";
+      if ([51, 53, 55].includes(code)) return "\u6bdb\u6bdb\u96e8";
+      if ([61, 63, 65].includes(code)) return "\u5c0f\u96e8";
+      if ([71, 73, 75].includes(code)) return "\u96ea";
+      if ([80, 81, 82].includes(code)) return "\u9635\u96e8";
+      if ([95, 96, 99].includes(code)) return "\u96f7\u96e8";
+      return "\u5929\u6c14\u540c\u6b65\u4e2d";
+    }
+
+    async function fetchSceneWeather(scene) {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${scene.latitude}&longitude=${scene.longitude}&current=temperature_2m,weather_code&timezone=${encodeURIComponent(scene.timezone)}`;
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        const temp = Math.round(data.current.temperature_2m);
+        const weatherText = weatherTextFromCode(data.current.weather_code);
+        state.weatherByScene[scene.id] = {
+          temperature: `${weatherText} ${temp}°C`,
+          weatherText,
+          temperatureText: `${temp}°C`,
+          timeText: formatSceneTime(scene),
+          dateText: formatSceneDate(scene),
+          seasonText: seasonForScene(scene)
+        };
+      } catch (error) {
+        console.warn("天气同步失败", scene.id, error);
+      }
+    }
+
+    async function refreshWeather() {
+      await Promise.all(sceneSeeds.map(fetchSceneWeather));
+      state.weatherRefreshToken += 1;
+      Object.entries(state.visualByScene).forEach(([sceneId, visual]) => {
+        const scene = sceneSeeds.find((item) => item.id === sceneId);
+        if (scene && visual?.realtime !== false) {
+          state.visualByScene[sceneId] = { realtime: true, preset: realtimeVisualPreset(scene) };
+        }
+      });
+      syncCurrentVisualState();
+      renderAll();
+    }
+
+    function updateTheme() {
+      const scene = currentScene();
+      document.documentElement.style.setProperty("--bg-top", scene.palette.top);
+      document.documentElement.style.setProperty("--bg-bottom", scene.palette.bottom);
+      document.documentElement.style.setProperty("--window-base", scene.frame.base);
+      document.documentElement.style.setProperty("--window-edge", scene.frame.edge);
+      document.body.classList.toggle("reduce-motion", state.settings.reduceMotion);
+    }
+
+    function renderWindow(scene, mode) {
+      const weather = currentWeather(scene);
+      const showInfo = state.settings.showInfo;
+      const isHome = mode === "home";
+      const isPreview = mode === "preview";
+      const isPlay = mode === "play";
+      const infoClass = showInfo && !isPreview ? "info-embedded" : "info-embedded hidden";
+      const tags = isHome ? scene.tags.slice(0, 3) : [];
+      const previewClass = isPreview ? "preview-copy" : "";
+      const homeClass = isHome ? "home-copy" : "";
+      const playClass = isPlay ? "play-copy" : "";
+      const locationParts = scene.location.split(" · ");
+      const geoText = locationParts.length > 1 ? `${locationParts[0]} · ${locationParts.at(-1)}` : scene.location;
+      const previewLocation = locationParts.length > 1 ? locationParts.at(-1) : scene.location;
+      const statusBadges = !isPlay ? `
+        <div class="status-badges">
+          ${state.screensaverSceneId === scene.id ? `<div class="status-badge screensaver" aria-label="已设为屏保"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="10" rx="2"/><path d="M9 19h6"/><path d="M12 15v4"/></svg><span>屏保</span></div>` : ""}
+          ${state.favorites.has(scene.id) ? `<div class="status-badge favorite" aria-label="已收藏"><svg viewBox="0 0 24 24"><path d="M12 20s-6.5-4.4-8.4-7.2C1.2 9.4 2.6 5.8 6.6 5.3c2-.2 3.5.7 4.4 2 1-1.3 2.5-2.2 4.4-2 4 .5 5.4 4.1 3 7.5C18.5 15.6 12 20 12 20Z"/></svg></div>` : ""}
+        </div>
+      ` : "";
+      const homeInfo = `
+        <div class="${infoClass}">
+          <div class="home-meta-stack">
+            <div class="home-location-line">
+              <svg viewBox="0 0 24 24"><path d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10Z"/><circle cx="12" cy="11" r="2.4"/></svg>
+              <strong>${geoText}</strong>
+            </div>
+            <div class="home-status-line">
+              <span>${weather.seasonText}</span>
+              <span class="dot-sep"></span>
+              <span class="info-pair">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.8 1.8"/></svg>
+                ${weather.timeText}
+              </span>
+              <span class="dot-sep"></span>
+              <span class="info-pair">
+                <svg viewBox="0 0 24 24"><path d="M7 16a4 4 0 1 1 1.3-7.8A5 5 0 0 1 18 10a3.5 3.5 0 0 1-.5 6H7Z"/></svg>
+                ${weather.weatherText} ${weather.temperatureText}
+              </span>
+            </div>
+          </div>
+        </div>
+      `;
+      const previewFooter = `
+        <div class="window-footer preview-footer">
+          <div class="preview-copy-block">
+            <div class="window-copy-text">
+              <div class="preview-meta">
+                <span>${previewLocation}</span>
+                <span class="dot-sep"></span>
+                <span>${weather.timeText}</span>
+                <span class="dot-sep"></span>
+                <span>${weather.weatherText} ${weather.temperatureText}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      const playInfo = `
+        <div class="play-meta-shell ${showInfo ? "" : "hidden"}">
+          <div class="play-meta-location">
+            <svg viewBox="0 0 24 24"><path d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10Z"/><circle cx="12" cy="11" r="2.4"/></svg>
+            <strong>${geoText}</strong>
+          </div>
+          <div class="play-meta-line">
+            <span>${weather.seasonText}</span>
+            <span class="dot-sep"></span>
+            <span class="info-pair">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.8 1.8"/></svg>
+              ${weather.timeText}
+            </span>
+            <span class="dot-sep"></span>
+            <span class="info-pair">
+              <svg viewBox="0 0 24 24"><path d="M7 16a4 4 0 1 1 1.3-7.8A5 5 0 0 1 18 10a3.5 3.5 0 0 1-.5 6H7Z"/></svg>
+              ${weather.weatherText} ${weather.temperatureText}
+            </span>
+          </div>
+        </div>
+      `;
+      const homeFooter = `
+        <div class="window-footer home-footer">
+          ${homeInfo}
+          <div class="window-tags">
+            ${tags.map(tag => `<span class="tag">${tag}</span>`).join("")}
+          </div>
+        </div>
+      `;
+      return `
+        <div class="window-inner">
+          <div class="window-media" style="background-image:url('${scene.image.replace(/'/g, "%27")}');filter:${sceneFilter(scene, mode)}"></div>
+          ${statusBadges}
+          <div class="window-copy ${previewClass} ${homeClass} ${playClass}">
+            ${isPreview ? previewFooter : isHome ? homeFooter : playInfo}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderHome() {
+      const scene = currentScene();
+      const prev = currentScene(-1);
+      const next = currentScene(1);
+      const items = currentItems();
+
+      el.homeKicker.textContent = "";
+      el.homeTitle.textContent = scene.heroTitle || scene.title;
+      el.homeDesc.textContent = scene.heroLine || "";
+
+      const animClass = state.sceneTransitionDirection === "left" ? "anim-left" : "anim-right";
+      el.prevButton.innerHTML = `<div class="window-shell preview ${animClass}">${renderWindow(prev, "preview")}</div>`;
+      el.nextButton.innerHTML = `<div class="window-shell preview ${animClass}">${renderWindow(next, "preview")}</div>`;
+      el.heroWindow.classList.remove("anim-left", "anim-right");
+      void el.heroWindow.offsetWidth;
+      el.heroWindow.classList.add(animClass);
+      el.heroWindow.innerHTML = renderWindow(scene, "home");
+      if (el.homeFavoriteAction) {
+        const isFavorite = state.favorites.has(scene.id);
+        const label = isFavorite ? "取消收藏" : "收藏";
+        const labelNode = el.homeFavoriteAction.querySelector("span");
+        if (labelNode) labelNode.textContent = label;
+        el.homeFavoriteAction.setAttribute("aria-label", label);
+      }
+      if (el.homeScreensaverAction) {
+        const isScreensaver = state.screensaverSceneId === scene.id;
+        const label = isScreensaver ? "取消屏保" : "设为屏保";
+        const labelNode = el.homeScreensaverAction.querySelector("span");
+        if (labelNode) labelNode.textContent = label;
+        el.homeScreensaverAction.setAttribute("aria-label", label);
+      }
+
+      el.sceneDots.innerHTML = items.map((item, index) => `<button class="scene-dot ${index === state.index ? "active" : ""}" data-dot="${index}" aria-label="切换到${item.shortTitle}"></button>`).join("");
+      if (el.categoryNav) {
+        el.categoryNav.innerHTML = contentCategories.map((category, index) => `
+          <button class="category-tab ${category.key === state.categoryKey ? "active" : ""} ${state.homeFocusZone === "categories" && state.categoryFocusIndex === index ? "is-focused" : ""}" data-category="${category.key}" aria-label="切换到${category.label}">
+            ${category.label}
+          </button>
+        `).join("");
+      }
+
+      const toolbarButtons = [...el.homeToolbar.querySelectorAll(".icon-btn")];
+      toolbarButtons.forEach((button, index) => {
+        button.classList.toggle("is-focused", state.homeFocusZone === "toolbar" && state.toolbarIndex === index);
+      });
+      el.heroWindow.classList.toggle("is-focused", state.homeFocusZone === "hero");
+      el.homeQuickActions?.classList.toggle("show", state.homeFocusZone === "hero");
+    }
+
+    function renderPlay() {
+      const scene = currentScene();
+      el.playWindow.innerHTML = renderWindow(scene, "play");
+      el.playWindow.classList.toggle("overlay-min", !state.overlayVisible);
+      el.playView.classList.toggle("overlay-min", !state.overlayVisible);
+      el.playView.classList.toggle("entering", state.playOpening);
+      el.playView.classList.toggle("scene-fading", state.sceneFading);
+      el.playView.classList.toggle("season-panel-open", state.seasonPanelOpen);
+      el.playWindow.classList.toggle("is-focused", state.playFocusZone === "stage");
+      const railButtons = [...el.playRail.querySelectorAll(".rail-btn")];
+      railButtons.forEach((button, index) => {
+        button.classList.toggle("is-focused", state.playFocusZone === "rail" && state.railIndex === index);
+      });
+      renderSeasonPanel();
+      updateStatus();
+    }
+
+    function renderImmersive() {
+      const scene = currentScene();
+      el.immersiveShell.innerHTML = renderWindow(scene, "play");
+      el.immersiveShell.classList.toggle("overlay-min", !state.overlayVisible);
+    }
+
+    function renderSeasonPanel() {
+      if (!el.seasonPanel) return;
+      el.seasonPanel.classList.toggle("open", state.seasonPanelOpen);
+      const controls = seasonPanelControls();
+      controls.forEach((button, index) => {
+        const type = button.dataset.seasonType;
+        button.classList.toggle("is-active", !!type && state.visualPreset?.[type] === button.dataset.seasonValue);
+        button.classList.toggle("is-focused", state.seasonPanelOpen && index === state.seasonFocusIndex);
+      });
+    }
+
+    function renderSleep() {
+      const scene = currentScene();
+      const weather = currentWeather(scene);
+      el.sleepBg.style.backgroundImage = `url('${scene.image.replace(/'/g, "%27")}')`;
+      el.sleepTime.textContent = weather.timeText;
+      el.sleepDate.textContent = weather.dateText;
+      el.sleepMeta.innerHTML = `
+        <span>${scene.location}</span>
+        <span class="dot-sep"></span>
+        <span>${weather.weatherText} ${weather.temperatureText}</span>
+        <span class="dot-sep"></span>
+        <span>${weather.seasonText}</span>
+      `;
+      el.sleepFeed.innerHTML = [
+        { title: "消息通知", text: `${scene.shortTitle} 当前窗景已切换至低功耗显示，仍保持在地信息同步。` },
+        { title: "影视新闻", text: "今日推荐：在大屏上观看自然风景类内容时，用户更偏好轻量信息与低干扰界面。" },
+        { title: "在地资讯", text: `${scene.location} 当前天气为 ${weather.weatherText}，适合继续保留该窗景作为空间氛围背景。` }
+      ].map(item => `
+        <div class="sleep-card">
+          <strong>${item.title}</strong>
+          <p>${item.text}</p>
+        </div>
+      `).join("");
+    }
+
+    function renderAll() {
+      updateTheme();
+      renderHome();
+      renderPlay();
+      renderImmersive();
+      renderSleep();
+      if (state.drawer) renderDrawer();
+      refreshAutoplay();
+    }
+
+    function refreshVisibleTimeOnly() {
+      if (state.page === "sleep") {
+        renderSleep();
+        return;
+      }
+
+      if (state.page === "play" || state.page === "immersive") {
+        updateStatus();
+      }
+    }
+
+    function setScene(index, announce = false) {
+      const items = currentItems();
+      state.sceneTransitionDirection = index > state.index || (state.index === items.length - 1 && index === 0) ? "right" : "left";
+      state.index = (index + items.length) % items.length;
+      syncCurrentVisualState();
+      renderAll();
+      persist();
+    }
+
+    function switchSceneWithFade(index) {
+      if (state.sceneFading) return;
+      const items = currentItems();
+      state.sceneTransitionDirection = index > state.index || (state.index === items.length - 1 && index === 0) ? "right" : "left";
+      state.sceneFading = true;
+      state.seasonPanelOpen = false;
+      renderPlay();
+      setTimeout(() => {
+        state.index = (index + items.length) % items.length;
+        syncCurrentVisualState();
+        persist();
+        renderAll();
+        setTimeout(() => {
+          state.sceneFading = false;
+          renderPlay();
+          wakeOverlay();
+        }, state.settings.reduceMotion ? 40 : 320);
+      }, state.settings.reduceMotion ? 40 : 360);
+    }
+
+    function openSeasonPanel() {
+      state.seasonPanelOpen = true;
+      state.seasonFocusIndex = 0;
+      state.overlayVisible = true;
+      clearTimeout(state.overlayTimer);
+      renderPlay();
+    }
+
+    function closeSeasonPanel() {
+      if (!state.seasonPanelOpen) return;
+      state.seasonPanelOpen = false;
+      renderPlay();
+      wakeOverlay();
+    }
+
+    function applySeasonChoice(type, value) {
+      const scene = currentScene();
+      const visual = sceneVisualState(scene);
+      saveSceneVisualState(scene, {
+        realtime: false,
+        preset: { ...visual.preset, [type]: value }
+      });
+      persist();
+      renderPlay();
+    }
+
+    function randomizeSeasonPanel() {
+      const pick = (items) => items[Math.floor(Math.random() * items.length)];
+      const scene = currentScene();
+      saveSceneVisualState(scene, {
+        realtime: false,
+        preset: {
+          season: pick(["\u6625", "\u590f", "\u79cb", "\u51ac"]),
+          weather: pick(["\u9634", "\u6674", "\u96e8", "\u96ea"]),
+          period: pick(["\u6668", "\u5348", "\u66ae", "\u591c"])
+        }
+      });
+      persist();
+      renderPlay();
+    }
+
+    function realtimeVisualPreset(scene = currentScene()) {
+      const month = monthInTimezone(scene.timezone);
+      const hour = hourInTimezone(scene.timezone);
+      const weather = currentWeather(scene).weatherText || "";
+      let season = "\u51ac";
+      let weatherValue = "\u6674";
+      let period = "\u5348";
+
+      if ([3, 4, 5].includes(month)) season = "\u6625";
+      if ([6, 7, 8].includes(month)) season = "\u590f";
+      if ([9, 10, 11].includes(month)) season = "\u79cb";
+
+      if (hour < 6 || hour >= 19) period = "\u591c";
+      else if (hour < 10) period = "\u6668";
+      else if (hour >= 16) period = "\u66ae";
+
+      if (weather.includes("\u96e8") || weather.includes("雨")) weatherValue = "\u96e8";
+      else if (weather.includes("\u96ea") || weather.includes("雪")) weatherValue = "\u96ea";
+      else if (
+        weather.includes("\u9634") ||
+        weather.includes("\u4e91") ||
+        weather.includes("阴") ||
+        weather.includes("云")
+      ) weatherValue = "\u9634";
+
+      return { season, weather: weatherValue, period };
+    }
+
+    function resetSeasonPanelToRealtime() {
+      const scene = currentScene();
+      saveSceneVisualState(scene, { realtime: true, preset: realtimeVisualPreset(scene) });
+      persist();
+      renderPlay();
+    }
+
+    function seasonPanelControls() {
+      return el.seasonPanel ? [...el.seasonPanel.querySelectorAll("#seasonRandom, #seasonReset, [data-season-type]")] : [];
+    }
+
+    function setSeasonPanelFocus(index) {
+      const controls = seasonPanelControls();
+      if (!controls.length) return;
+      state.seasonFocusIndex = (index + controls.length) % controls.length;
+      renderSeasonPanel();
+    }
+
+    function triggerSeasonPanelControl() {
+      const control = seasonPanelControls()[state.seasonFocusIndex];
+      if (!control) return;
+      if (control.id === "seasonRandom") {
+        randomizeSeasonPanel();
+        return;
+      }
+      if (control.id === "seasonReset") {
+        resetSeasonPanelToRealtime();
+        return;
+      }
+      applySeasonChoice(control.dataset.seasonType, control.dataset.seasonValue);
+    }
+
+    function showToast(text) {
+      el.toast.textContent = text;
+      el.toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => el.toast.classList.remove("show"), 1800);
+    }
+
+    function openDrawer(type) {
+      state.drawer = type;
+      state.drawerFocusIndex = 0;
+      renderDrawer();
+      el.drawer.classList.add("open");
+      el.drawerMask.classList.add("open");
+      refreshAutoplay();
+    }
+
+    function closeDrawer() {
+      state.drawer = null;
+      el.drawer.classList.remove("open");
+      el.drawerMask.classList.remove("open");
+      refreshAutoplay();
+    }
+
+    function renderDrawer() {
+      if (!state.drawer) {
+        el.drawer.innerHTML = "";
+        return;
+      }
+
+      if (state.drawer === "screensaver") {
+        const activeScene = screensaverScene();
+        const current = currentScene();
+        const currentIsScreensaver = state.screensaverSceneId === current.id;
+        let drawerIndex = 0;
+        const sceneCard = (scene, role, reason = "") => {
+          const weather = currentWeather(scene);
+          const meta = sceneListMeta(scene);
+          const isActive = state.screensaverSceneId === scene.id;
+          const action = isActive ? "unset" : "set";
+          return `
+            <button class="screensaver-card ${isActive ? "is-current" : ""}" data-drawer-index="${drawerIndex++}" data-screensaver-action="${action}" data-scene-id="${scene.id}">
+              <div class="scene-thumb" style="--thumb-base:${scene.frame.base};--thumb-edge:${scene.frame.edge};">
+                <div class="scene-thumb-inner" style="background-image:url('${scene.image.replace(/'/g, "%27")}')"></div>
+              </div>
+              <div class="scene-info">
+                <strong>${meta.title}</strong>
+                <div class="scene-meta-line">
+                  <span>${meta.location}</span>
+                  <span class="dot-sep"></span>
+                  <span>${weather.seasonText}</span>
+                  <span class="dot-sep"></span>
+                  <span>${weather.timeText}</span>
+                  <span class="dot-sep"></span>
+                  <span>${weather.weatherText} ${weather.temperatureText}</span>
+                </div>
+                <p>${reason || (role === "active" ? "\u65e0\u64cd\u4f5c\u540e\u4f18\u5148\u8fdb\u5165\u6b64\u7a97\u666f\u5c4f\u4fdd" : recommendationReason(scene))}</p>
+                <div class="scene-pills">
+                  ${isActive ? `<span class="mini-tag state">\u5c4f\u4fdd\u4e2d</span>` : ""}
+                  ${meta.tags.map(tag => `<span class="mini-tag">${tag}</span>`).join("")}
+                </div>
+              </div>
+              <span class="screensaver-action">${isActive ? "\u53d6\u6d88\u5c4f\u4fdd" : "\u8bbe\u4e3a\u5c4f\u4fdd"}</span>
+            </button>
+          `;
+        };
+        const settingOption = (type, value, active) => `
+          <button class="screensaver-option ${active ? "is-active" : ""}" data-drawer-index="${drawerIndex++}" data-screensaver-setting="${type}" data-screensaver-value="${value}">
+            ${screensaverSettingLabel(type, value)}
+          </button>
+        `;
+
+        el.drawer.innerHTML = `
+          <div class="drawer-head">
+            <div class="drawer-head-row">
+              <h3>\u5c4f\u4fdd\u4e2d\u5fc3</h3>
+              <button class="drawer-close" data-close-drawer aria-label="\u5173\u95ed">
+                <svg viewBox="0 0 24 24"><path d="M6 6 18 18"/><path d="M18 6 6 18"/></svg>
+              </button>
+            </div>
+            <p>\u7edf\u4e00\u7ba1\u7406\u5c4f\u4fdd\u7a97\u666f\u3001\u4eca\u65e5\u63a8\u8350\u548c\u5c4f\u4fdd\u542f\u52a8\u89c4\u5219\u3002</p>
+          </div>
+          <div class="drawer-body">
+            <section class="screensaver-section">
+              <div class="screensaver-section-title">\u5f53\u524d\u5c4f\u4fdd</div>
+              ${activeScene ? sceneCard(activeScene, "active") : `
+                <div class="setting-card">
+                  <h4>\u5c1a\u672a\u8bbe\u7f6e\u5c4f\u4fdd</h4>
+                  <p>\u53ef\u5c06\u5f53\u524d\u7a97\u666f\u6216\u4eca\u65e5\u63a8\u8350\u4e00\u952e\u8bbe\u4e3a\u5c4f\u4fdd\u3002</p>
+                </div>
+              `}
+              ${currentIsScreensaver ? "" : sceneCard(current, "current", "\u5f53\u524d\u6b63\u5728\u6d4f\u89c8\u7684\u7a97\u666f\uff0c\u53ef\u4e00\u952e\u66ff\u6362\u4e3a\u5c4f\u4fdd")}
+            </section>
+            <section class="screensaver-section">
+              <div class="screensaver-section-title">\u4eca\u65e5\u63a8\u8350</div>
+              ${recommendedScreensaverScenes().map(scene => sceneCard(scene, "recommend")).join("")}
+            </section>
+            <section class="screensaver-section">
+              <div class="screensaver-section-title">\u5c4f\u4fdd\u8bbe\u7f6e</div>
+              <div class="screensaver-settings">
+                <div class="screensaver-setting-row">
+                  <strong>\u542f\u52a8\u65f6\u95f4</strong>
+                  <div class="screensaver-options">
+                    ${[1, 3, 5, 10].map(value => settingOption("start", value, state.settings.screensaverStartTime === value)).join("")}
+                  </div>
+                </div>
+                <div class="screensaver-setting-row">
+                  <strong>\u64ad\u653e\u6a21\u5f0f</strong>
+                  <div class="screensaver-options">
+                    ${["fixed", "favorites", "recommended"].map(value => settingOption("mode", value, state.settings.screensaverPlayMode === value)).join("")}
+                  </div>
+                </div>
+                <div class="screensaver-setting-row">
+                  <strong>\u4fe1\u606f\u663e\u793a</strong>
+                  <div class="screensaver-options">
+                    ${["auto", "always", "hidden"].map(value => settingOption("info", value, state.settings.screensaverInfoMode === value)).join("")}
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        `;
+        requestAnimationFrame(() => setDrawerFocus(state.drawerFocusIndex));
+        return;
+      }
+
+      if (state.drawer === "menu") {
+        let drawerIndex = 0;
+        el.drawer.innerHTML = `
+          <div class="drawer-head">
+            <div class="drawer-head-row">
+              <h3>\u5185\u5bb9\u5217\u8868</h3>
+              <button class="drawer-close" data-close-drawer aria-label="\u5173\u95ed">
+                <svg viewBox="0 0 24 24"><path d="M6 6 18 18"/><path d="M18 6 6 18"/></svg>
+              </button>
+            </div>
+            <p>\u7a97\u666f\u3001\u7597\u6108\u3001\u65f6\u523b\u3001\u56fe\u518c\u4e0e\u76f8\u518c\u7684\u7edf\u4e00\u7ba1\u7406\u3002</p>
+          </div>
+          <div class="drawer-body">
+            ${sceneSeeds.map((scene, index) => {
+              const weather = currentWeather(scene);
+              const meta = sceneListMeta(scene);
+              const favorite = state.favorites.has(scene.id);
+              const isScreensaver = state.screensaverSceneId === scene.id;
+              const isCurrent = scene.id === currentScene().id;
+              const currentLabel = isCurrent ? '<span class="mini-tag state">\u5f53\u524d</span>' : '';
+              return `
+                <div class="scene-item ${isCurrent ? "is-current" : ""}" data-scene-id="${scene.id}" data-drawer-index="${drawerIndex++}" role="button">
+                  <div class="scene-thumb" style="--thumb-base:${scene.frame.base};--thumb-edge:${scene.frame.edge};">
+                    <div class="scene-thumb-inner" style="background-image:url('${scene.image.replace(/'/g, "%27")}')"></div>
+                  </div>
+                  <div class="scene-info">
+                    <strong>${meta.title}</strong>
+                    <div class="scene-meta-line">
+                      <span>${scene.groupLabel || "\u7a97\u666f"}</span>
+                      <span class="dot-sep"></span>
+                      <span>${weather.seasonText}</span>
+                      <span class="dot-sep"></span>
+                      <span>${weather.timeText}</span>
+                      <span class="dot-sep"></span>
+                      <span>${weather.weatherText} ${weather.temperatureText}</span>
+                    </div>
+                    <div class="scene-pills">
+                      ${meta.tags.map(tag => `<span class="mini-tag">${tag}</span>`).join("")}
+                    </div>
+                  </div>
+                  <div class="scene-tail">
+                    ${currentLabel}
+                    ${isScreensaver ? '<span class="mini-tag screensaver">\u5c4f\u4fdd\u4e2d</span>' : '<span class="mini-tag">\u672a\u8bbe\u5c4f\u4fdd</span>'}
+                    <button class="scene-favorite-action ${favorite ? "is-favorite" : ""}" data-favorite-scene-id="${scene.id}">
+                      ${favorite ? "\u53d6\u6d88\u6536\u85cf" : "\u6dfb\u52a0\u6536\u85cf"}
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+        return;
+      }
+
+      if (state.drawer === "season") {
+        const scene = currentScene();
+        const weather = currentWeather(scene);
+        el.drawer.innerHTML = `
+          <div class="drawer-head">
+            <div class="drawer-head-row">
+              <h3>时季调节</h3>
+              <button class="drawer-close" data-close-drawer aria-label="关闭">
+                <svg viewBox="0 0 24 24"><path d="M6 6 18 18"/><path d="M18 6 6 18"/></svg>
+              </button>
+            </div>
+            <p>当前窗景默认与在地时间、天气、季节实时同步，适合用于全屏沉浸展示。</p>
+          </div>
+          <div class="drawer-body">
+            <div class="setting-card">
+              <h4>当前同步状态</h4>
+              <p>${scene.location} · ${weather.seasonText} · ${weather.timeText} · ${weather.weatherText} ${weather.temperatureText}</p>
+            </div>
+            <button class="season-option is-current" data-drawer-index="0" data-season-action="realtime">
+              <strong>实时同步</strong>
+              <span>跟随当地此刻时间、天气与季节变化，当前推荐保持开启。</span>
+            </button>
+            <button class="season-option" data-drawer-index="1" data-season-action="sunset">
+              <strong>黄昏演绎</strong>
+              <span>适合在空间展示中快速切换到更有氛围的暮色效果。</span>
+            </button>
+            <button class="season-option" data-drawer-index="2" data-season-action="winter">
+              <strong>冬季演绎</strong>
+              <span>适合快速预览冬季氛围，当前 Demo 中作为概念预览入口。</span>
+            </button>
+          </div>
+        `;
+        requestAnimationFrame(() => setDrawerFocus(state.drawerFocusIndex));
+        return;
+      }
+
+      const sleepOff = !state.settings.allowSleep;
+      const blackDisabled = sleepOff || !state.settings.allowBlack;
+      el.drawer.innerHTML = `
+        <div class="drawer-head">
+          <div class="drawer-head-row">
+            <h3>窗景设置</h3>
+            <button class="drawer-close" data-close-drawer aria-label="关闭">
+              <svg viewBox="0 0 24 24"><path d="M6 6 18 18"/><path d="M18 6 6 18"/></svg>
+            </button>
+          </div>
+          <p>面向电视端的轻量设置。</p>
+        </div>
+        <div class="drawer-body">
+          <div class="setting-card">
+            <h4>浏览与信息</h4>
+            <p>以图为主，信息尽量轻。</p>
+            <div class="setting-row" data-drawer-index="0" data-control-type="toggle" data-control-key="showInfo">
+              <div class="setting-label">
+                <strong>显示嵌入式信息</strong>
+                <span>展示地点、时间、天气与季节。</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" data-setting="showInfo" ${state.settings.showInfo ? "checked" : ""}/>
+                <span class="switch-track"></span>
+                <span class="switch-thumb"></span>
+              </label>
+            </div>
+            <div class="setting-row" data-drawer-index="1" data-control-type="toggle" data-control-key="autoplayHome">
+              <div class="setting-label">
+                <strong>首页自动轮播</strong>
+                <span>首页自动切换不同窗景。</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" data-setting="autoplayHome" ${state.settings.autoplayHome ? "checked" : ""}/>
+                <span class="switch-track"></span>
+                <span class="switch-thumb"></span>
+              </label>
+            </div>
+            <div class="range-group ${!state.settings.autoplayHome ? "disabled" : ""}" data-drawer-index="2" data-control-type="range" data-control-key="autoplayInterval" data-min="8" data-max="30" data-step="1">
+              <div class="range-head">
+                <span>首页轮播间隔</span>
+                <strong>${state.settings.autoplayInterval} 秒</strong>
+              </div>
+              <input type="range" min="8" max="30" step="1" value="${state.settings.autoplayInterval}" data-range="autoplayInterval"/>
+              <div class="range-note">建议 12–18 秒。</div>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h4>息屏与黑屏</h4>
+            <p>窗景 → 息屏 → 黑屏。</p>
+            <div class="setting-row" data-drawer-index="3" data-control-type="toggle" data-control-key="allowSleep">
+              <div class="setting-label">
+                <strong>允许进入息屏显示</strong>
+                <span>开启后，将在屏保播放 ${state.settings.sleepTimeout} 秒后进入低功耗水墨屏模式。</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" data-setting="allowSleep" ${state.settings.allowSleep ? "checked" : ""}/>
+                <span class="switch-track"></span>
+                <span class="switch-thumb"></span>
+              </label>
+            </div>
+            <div class="range-group ${sleepOff ? "disabled" : ""}" data-drawer-index="4" data-control-type="range" data-control-key="sleepTimeout" data-min="20" data-max="180" data-step="5">
+              <div class="range-head">
+                <span>窗景 → 息屏 超时</span>
+                <strong>${state.settings.sleepTimeout} 秒</strong>
+              </div>
+              <input type="range" min="20" max="180" step="5" value="${state.settings.sleepTimeout}" data-range="sleepTimeout" ${sleepOff ? "disabled" : ""}/>
+              <div class="range-note">息屏前会弹出 3 秒提示：即将为您自动切换至水墨屏低功耗模式。</div>
+            </div>
+            <div class="setting-row ${sleepOff ? "disabled" : ""}" data-drawer-index="5" data-control-type="toggle" data-control-key="allowBlack">
+              <div class="setting-label">
+                <strong>允许进入黑屏</strong>
+                <span>${sleepOff ? "需先开启息屏显示，黑屏开关才可选择。" : `开启后，息屏持续 ${state.settings.blackTimeout} 秒后自动黑屏。`}</span>
+              </div>
+              <label class="switch ${sleepOff ? "disabled" : ""}">
+                <input type="checkbox" data-setting="allowBlack" ${state.settings.allowBlack ? "checked" : ""} ${sleepOff ? "disabled" : ""}/>
+                <span class="switch-track"></span>
+                <span class="switch-thumb"></span>
+              </label>
+            </div>
+            <div class="range-group ${blackDisabled ? "disabled" : ""}" data-drawer-index="6" data-control-type="range" data-control-key="blackTimeout" data-min="30" data-max="300" data-step="10">
+              <div class="range-head">
+                <span>息屏 → 黑屏 超时</span>
+                <strong>${state.settings.blackTimeout} 秒</strong>
+              </div>
+              <input type="range" min="30" max="300" step="10" value="${state.settings.blackTimeout}" data-range="blackTimeout" ${blackDisabled ? "disabled" : ""}/>
+              <div class="range-note">黑屏前会弹出 3 秒提示：即将为您自动黑屏，可任意按键唤起或打断。</div>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h4>动效与焦点</h4>
+            <p>遥控器是这套 Demo 的主交互方式，减少动效会让焦点移动更克制。</p>
+            <div class="setting-row" data-drawer-index="7" data-control-type="toggle" data-control-key="reduceMotion">
+              <div class="setting-label">
+                <strong>减少动效</strong>
+                <span>降低漂移与过渡强度，更适合更稳、更轻的电视端体验展示。</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" data-setting="reduceMotion" ${state.settings.reduceMotion ? "checked" : ""}/>
+                <span class="switch-track"></span>
+                <span class="switch-thumb"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      `;
+
+      requestAnimationFrame(() => {
+        const focusables = [...el.drawer.querySelectorAll("[data-drawer-index]")];
+        focusables.forEach((node) => {
+          node.classList.toggle("is-focused", Number(node.dataset.drawerIndex) === state.drawerFocusIndex);
+        });
+      });
+    }
+
+    function showPrompt(type, seconds) {
+      clearInterval(promptTimer);
+      state.promptType = type;
+      state.promptCountdown = seconds;
+      const isBlack = type === "black";
+      el.prompt.className = `prompt show ${isBlack ? "dark" : ""}`;
+      el.prompt.innerHTML = `
+        <div class="prompt-copy">
+          <div class="prompt-title">${isBlack ? "即将为您自动黑屏，可任意按键唤起或打断" : "即将为您自动切换至水墨屏低功耗模式"}</div>
+          <div class="prompt-sub">倒计时结束后自动切换</div>
+        </div>
+        <div class="prompt-count">${seconds}</div>
+      `;
+      promptTimer = setInterval(() => {
+        state.promptCountdown -= 1;
+        if (state.promptCountdown <= 0) {
+          hidePrompt();
+          if (type === "sleep") enterSleep();
+          if (type === "black") enterBlack();
+          return;
+        }
+        const count = el.prompt.querySelector(".prompt-count");
+        if (count) count.textContent = state.promptCountdown;
+      }, 1000);
+    }
+
+    function hidePrompt() {
+      clearInterval(promptTimer);
+      state.promptType = null;
+      el.prompt.classList.remove("show", "dark");
+    }
+
+    function wakeOverlay() {
+      if (state.page !== "play" && state.page !== "immersive") return;
+      if (state.seasonPanelOpen) return;
+      state.overlayVisible = true;
+      renderPlay();
+      renderImmersive();
+      clearTimeout(state.overlayTimer);
+      state.overlayTimer = setTimeout(() => {
+        if (state.seasonPanelOpen) return;
+        state.overlayVisible = false;
+        renderPlay();
+        renderImmersive();
+      }, 5000);
+    }
+
+    function touchInteraction() {
+      state.lastInteractionAt = Date.now();
+      if (state.page === "play" || state.page === "immersive") {
+        wakeOverlay();
+      }
+      if (state.page !== "sleep" && state.page !== "black") {
+        hidePrompt();
+      }
+      updateStatus();
+    }
+
+    function updateStatus() {
+      if (state.page === "play" || state.page === "immersive") {
+        if (!state.settings.allowSleep) {
+          el.statusTitle.textContent = "息屏显示已关闭";
+          el.statusSub.textContent = "当前会持续停留在窗景播放层，不再自动进入低功耗状态。";
+          return;
+        }
+        const elapsed = Math.floor((Date.now() - state.lastInteractionAt) / 1000);
+        const remain = Math.max(0, state.settings.sleepTimeout - elapsed);
+        el.statusTitle.textContent = `距离进入息屏还有 ${remain} 秒`;
+        el.statusSub.textContent = state.settings.allowBlack
+          ? `息屏后还将继续倒计时 ${state.settings.blackTimeout} 秒进入黑屏。`
+          : "黑屏开关已关闭，到达息屏层后会继续停留。";
+        return;
+      }
+      if (state.page === "sleep") {
+        if (!state.settings.allowBlack) {
+          el.statusTitle.textContent = "当前处于息屏显示";
+          el.statusSub.textContent = "黑屏阀门关闭，息屏层将持续保持。";
+          return;
+        }
+        const elapsed = Math.floor((Date.now() - state.sleepStartedAt) / 1000);
+        const remain = Math.max(0, state.settings.blackTimeout - elapsed);
+        el.statusTitle.textContent = `距离进入黑屏还有 ${remain} 秒`;
+        el.statusSub.textContent = "任意按键可直接返回首页。";
+        return;
+      }
+      el.statusTitle.textContent = "浏览窗景首页";
+      el.statusSub.textContent = "通过遥控器左右切换，OK 进入当前窗景。";
+    }
+
+    function setPage(page) {
+      state.page = page;
+      if (state.drawer && (page === "sleep" || page === "black" || page === "immersive")) closeDrawer();
+      if (page !== "play") {
+        state.seasonPanelOpen = false;
+        state.sceneFading = false;
+      }
+      el.homeView.classList.toggle("active", page === "home");
+      el.playView.classList.toggle("active", page === "play");
+      el.immersiveView.classList.toggle("active", page === "immersive");
+      el.sleepView.classList.toggle("active", page === "sleep");
+      el.blackView.classList.toggle("active", page === "black");
+      if (page === "play" || page === "immersive") wakeOverlay();
+      updateStatus();
+      refreshAutoplay();
+    }
+
+    function enterPlay() {
+      clearTimeout(state.playOpeningTimer);
+      state.playFocusZone = "stage";
+      state.railIndex = 0;
+      state.overlayVisible = true;
+      state.playOpening = true;
+      setPage("play");
+      state.playOpeningTimer = setTimeout(() => {
+        state.playOpening = false;
+        renderPlay();
+      }, 760);
+      touchInteraction();
+    }
+
+    function exitToHome() {
+      clearTimeout(state.playOpeningTimer);
+      state.playOpening = false;
+      setPage("home");
+      touchInteraction();
+    }
+
+    function enterImmersive() {
+      setPage("immersive");
+      touchInteraction();
+    }
+
+    function exitImmersive() {
+      setPage("play");
+      touchInteraction();
+    }
+
+    function enterSleep() {
+      state.sleepStartedAt = Date.now();
+      setPage("sleep");
+      renderSleep();
+    }
+
+    function enterBlack() {
+      setPage("black");
+    }
+
+    function wakeFromSleep(target = "home") {
+      if (target === "play") {
+        setPage("play");
+        showToast("????????");
+      } else {
+        setPage("home");
+        showToast("????????");
+      }
+      touchInteraction();
+    }
+
+    function wakeFromBlack() {
+      setPage("home");
+      showToast("已从黑屏返回 Launcher");
+      touchInteraction();
+    }
+
+    function toggleFavorite() {
+      toggleFavoriteScene(currentScene().id);
+    }
+
+    function toggleFavoriteScene(sceneId) {
+      const scene = sceneSeeds.find((item) => item.id === sceneId);
+      if (!scene) return;
+      if (state.favorites.has(scene.id)) {
+        state.favorites.delete(scene.id);
+        showToast(`已取消收藏 ${scene.shortTitle}`);
+      } else {
+        state.favorites.add(scene.id);
+        showToast(`已收藏 ${scene.shortTitle}`);
+      }
+      persist();
+      renderAll();
+      renderDrawer();
+    }
+
+    function setCurrentSceneAsScreensaver() {
+      setScreensaverScene(currentScene().id);
+    }
+
+    function setScreensaverScene(sceneId) {
+      const scene = sceneSeeds.find((item) => item.id === sceneId);
+      if (!scene) return;
+      state.screensaverSceneId = scene.id;
+      persist();
+      showToast(`\u5df2\u5c06 ${sceneListMeta(scene).title} \u8bbe\u4e3a\u5c4f\u4fdd`);
+      renderAll();
+      renderDrawer();
+    }
+
+    function unsetScreensaverScene(sceneId = state.screensaverSceneId) {
+      if (state.screensaverSceneId !== sceneId) return;
+      state.screensaverSceneId = null;
+      persist();
+      showToast("\u5df2\u53d6\u6d88\u5f53\u524d\u5c4f\u4fdd");
+      renderAll();
+      renderDrawer();
+    }
+
+    function setScreensaverSetting(type, value) {
+      if (type === "start") state.settings.screensaverStartTime = Number(value);
+      if (type === "mode") state.settings.screensaverPlayMode = value;
+      if (type === "info") state.settings.screensaverInfoMode = value;
+      normalizeSettings();
+      persist();
+      renderDrawer();
+      showToast("\u5c4f\u4fdd\u8bbe\u7f6e\u5df2\u66f4\u65b0");
+    }
+
+    function triggerScreensaverDrawerItem(item) {
+      const action = item.dataset.screensaverAction;
+      if (action === "set") {
+        setScreensaverScene(item.dataset.sceneId);
+        return true;
+      }
+      if (action === "unset") {
+        unsetScreensaverScene(item.dataset.sceneId);
+        return true;
+      }
+      if (item.dataset.screensaverSetting) {
+        setScreensaverSetting(item.dataset.screensaverSetting, item.dataset.screensaverValue);
+        return true;
+      }
+      return false;
+    }
+
+    function refreshAutoplay() {
+      clearInterval(homeAutoplayTimer);
+      if (state.page !== "home" || state.drawer || !state.settings.autoplayHome) return;
+      homeAutoplayTimer = setInterval(() => {
+        if (state.page !== "home" || state.drawer) return;
+        setScene(state.index + 1);
+      }, state.settings.autoplayInterval * 1000);
+    }
+
+    function setToolbarIndex(index) {
+      const buttons = [...el.homeToolbar.querySelectorAll(".icon-btn")];
+      state.toolbarIndex = clamp(index, 0, buttons.length - 1);
+      renderHome();
+    }
+
+    function setRailIndex(index) {
+      const buttons = [...el.playRail.querySelectorAll(".rail-btn")];
+      state.railIndex = clamp(index, 0, buttons.length - 1);
+      renderPlay();
+    }
+
+    function triggerHomeAction(action) {
+      if (action === "screensaver") openDrawer("screensaver");
+      if (action === "menu") openDrawer("menu");
+      if (action === "favorite") {
+        toggleFavorite();
+        state.homeFocusZone = "hero";
+        renderHome();
+      }
+      if (action === "settings") openDrawer("settings");
+    }
+
+    function triggerRailAction(action) {
+      if (action === "immersive") enterImmersive();
+      if (action === "season") openSeasonPanel();
+    }
+
+    function drawerItems() {
+      return [...el.drawer.querySelectorAll("[data-drawer-index]")];
+    }
+
+    function setDrawerFocus(index) {
+      const items = drawerItems();
+      if (!items.length) return;
+      state.drawerFocusIndex = clamp(index, 0, items.length - 1);
+      items.forEach((node) => {
+        node.classList.toggle("is-focused", Number(node.dataset.drawerIndex) === state.drawerFocusIndex);
+      });
+    }
+
+    function toggleSettingKey(key) {
+      state.settings[key] = !state.settings[key];
+      normalizeSettings();
+      persist();
+      renderAll();
+      renderDrawer();
+      showToast(`${settingLabel(key)}已${state.settings[key] ? "开启" : "关闭"}`);
+    }
+
+    function adjustRangeKey(key, step, min, max, direction) {
+      state.settings[key] = clamp(state.settings[key] + step * direction, min, max);
+      normalizeSettings();
+      persist();
+      renderDrawer();
+      updateStatus();
+      refreshAutoplay();
+    }
+
+    function handleDrawerKey(event) {
+      const items = drawerItems();
+      if (!items.length) return false;
+
+      if (event.key === "ArrowUp") {
+        setDrawerFocus(state.drawerFocusIndex - 1);
+        return true;
+      }
+      if (event.key === "ArrowDown") {
+        setDrawerFocus(state.drawerFocusIndex + 1);
+        return true;
+      }
+
+      const current = items[state.drawerFocusIndex];
+      if (!current) return false;
+      if (current.classList.contains("disabled")) return false;
+
+      if (state.drawer === "menu") {
+        if (event.key === "Enter" || event.key === " ") {
+          selectSceneById(current.dataset.sceneId);
+          closeDrawer();
+          return true;
+        }
+        return false;
+      }
+
+      if (state.drawer === "screensaver") {
+        if (event.key === "Enter" || event.key === " ") {
+          return triggerScreensaverDrawerItem(current);
+        }
+        return false;
+      }
+
+      const type = current.dataset.controlType;
+      const key = current.dataset.controlKey;
+      if (!type || !key) return false;
+
+      if (type === "toggle" && (event.key === "Enter" || event.key === " " || event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+        toggleSettingKey(key);
+        return true;
+      }
+
+      if (type === "range" && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+        adjustRangeKey(
+          key,
+          Number(current.dataset.step),
+          Number(current.dataset.min),
+          Number(current.dataset.max),
+          event.key === "ArrowRight" ? 1 : -1
+        );
+        return true;
+      }
+
+      return false;
+    }
+
+    function handleHomeKey(event) {
+      if (state.homeFocusZone === "hero") {
+        if (event.key === "ArrowLeft") {
+          setScene(state.index - 1, true);
+          return true;
+        }
+        if (event.key === "ArrowRight") {
+          setScene(state.index + 1, true);
+          return true;
+        }
+        if (event.key === "ArrowUp") {
+          state.homeFocusZone = "toolbar";
+          renderHome();
+          return true;
+        }
+        if (event.key === "ArrowDown") {
+          state.homeFocusZone = "categories";
+          state.categoryFocusIndex = contentCategories.findIndex((category) => category.key === state.categoryKey);
+          renderHome();
+          return true;
+        }
+        if (event.key === "Enter" || event.key === " ") {
+          enterPlay();
+          return true;
+        }
+      } else if (state.homeFocusZone === "categories") {
+        if (event.key === "ArrowLeft") {
+          const nextIndex = (state.categoryFocusIndex - 1 + contentCategories.length) % contentCategories.length;
+          state.categoryFocusIndex = nextIndex;
+          selectCategory(contentCategories[nextIndex].key);
+          state.homeFocusZone = "categories";
+          return true;
+        }
+        if (event.key === "ArrowRight") {
+          const nextIndex = (state.categoryFocusIndex + 1) % contentCategories.length;
+          state.categoryFocusIndex = nextIndex;
+          selectCategory(contentCategories[nextIndex].key);
+          state.homeFocusZone = "categories";
+          return true;
+        }
+        if (event.key === "ArrowUp") {
+          state.homeFocusZone = "hero";
+          renderHome();
+          return true;
+        }
+        if (event.key === "Enter" || event.key === " ") {
+          state.homeFocusZone = "hero";
+          renderHome();
+          return true;
+        }
+      } else {
+        if (event.key === "ArrowLeft") {
+          setToolbarIndex(state.toolbarIndex - 1);
+          return true;
+        }
+        if (event.key === "ArrowRight") {
+          setToolbarIndex(state.toolbarIndex + 1);
+          return true;
+        }
+        if (event.key === "ArrowDown") {
+          state.homeFocusZone = "hero";
+          renderHome();
+          return true;
+        }
+        if (event.key === "Enter" || event.key === " ") {
+          const action = el.homeToolbar.querySelectorAll(".icon-btn")[state.toolbarIndex]?.dataset.homeAction;
+          if (action) triggerHomeAction(action);
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function handlePlayKey(event) {
+      if (state.seasonPanelOpen) {
+        if (event.key === "Escape" || event.key === "Backspace") {
+          closeSeasonPanel();
+          return true;
+        }
+        if (event.key === "ArrowLeft") {
+          setSeasonPanelFocus(state.seasonFocusIndex - 1);
+          return true;
+        }
+        if (event.key === "ArrowRight") {
+          setSeasonPanelFocus(state.seasonFocusIndex + 1);
+          return true;
+        }
+        if (event.key === "ArrowUp") {
+          setSeasonPanelFocus(state.seasonFocusIndex <= 1 ? state.seasonFocusIndex + 10 : state.seasonFocusIndex - 2);
+          return true;
+        }
+        if (event.key === "ArrowDown") {
+          setSeasonPanelFocus(state.seasonFocusIndex <= 1 ? state.seasonFocusIndex + 2 : state.seasonFocusIndex + 2);
+          return true;
+        }
+        if (event.key === "Enter" || event.key === " ") {
+          triggerSeasonPanelControl();
+          return true;
+        }
+        return false;
+      }
+
+      if (state.playFocusZone === "rail") {
+        if (event.key === "ArrowUp") {
+          setRailIndex(state.railIndex - 1);
+          return true;
+        }
+        if (event.key === "ArrowDown") {
+          setRailIndex(state.railIndex + 1);
+          return true;
+        }
+        if (event.key === "ArrowLeft") {
+          state.playFocusZone = "stage";
+          renderPlay();
+          return true;
+        }
+        if (event.key === "Enter" || event.key === " ") {
+          const action = el.playRail.querySelectorAll(".rail-btn")[state.railIndex]?.dataset.railAction;
+          if (action) triggerRailAction(action);
+          return true;
+        }
+      } else {
+        if (event.key === "ArrowLeft") {
+          switchSceneWithFade(state.index - 1);
+          return true;
+        }
+        if (event.key === "ArrowRight") {
+          switchSceneWithFade(state.index + 1);
+          return true;
+        }
+        if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+          state.playFocusZone = "rail";
+          renderPlay();
+          return true;
+        }
+      }
+      if (event.key === "ArrowLeft") {
+        switchSceneWithFade(state.index - 1);
+        return true;
+      }
+      if (event.key === "ArrowRight") {
+        switchSceneWithFade(state.index + 1);
+        return true;
+      }
+      return false;
+    }
+
+    function attachEvents() {
+      el.prevButton.addEventListener("click", () => { setScene(state.index - 1, true); touchInteraction(); });
+      el.nextButton.addEventListener("click", () => { setScene(state.index + 1, true); touchInteraction(); });
+      el.leftStageArrow.addEventListener("click", () => { setScene(state.index - 1, true); touchInteraction(); });
+      el.rightStageArrow.addEventListener("click", () => { setScene(state.index + 1, true); touchInteraction(); });
+      el.heroWindow.addEventListener("click", enterPlay);
+      el.homeFavoriteAction?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        toggleFavorite();
+        state.homeFocusZone = "hero";
+        renderHome();
+        touchInteraction();
+      });
+      el.homeScreensaverAction?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (state.screensaverSceneId === currentScene().id) {
+          unsetScreensaverScene(currentScene().id);
+        } else {
+          setCurrentSceneAsScreensaver();
+        }
+        state.homeFocusZone = "hero";
+        renderHome();
+        touchInteraction();
+      });
+      el.backButton.addEventListener("click", exitToHome);
+      el.playSettings.addEventListener("click", () => openDrawer("settings"));
+      el.drawerMask.addEventListener("click", closeDrawer);
+      el.sleepView.addEventListener("click", wakeFromSleep);
+      el.blackView.addEventListener("click", wakeFromBlack);
+      el.immersiveExit.addEventListener("click", exitImmersive);
+      el.immersivePrev.addEventListener("click", () => { setScene(state.index - 1, true); touchInteraction(); });
+      el.immersiveNext.addEventListener("click", () => { setScene(state.index + 1, true); touchInteraction(); });
+
+      el.homeToolbar.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-home-action]");
+        if (!button) return;
+        state.homeFocusZone = "toolbar";
+        state.toolbarIndex = [...el.homeToolbar.querySelectorAll(".icon-btn")].indexOf(button);
+        triggerHomeAction(button.dataset.homeAction);
+        renderHome();
+        touchInteraction();
+      });
+
+      el.playRail.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-rail-action]");
+        if (!button) return;
+        state.playFocusZone = "rail";
+        state.railIndex = [...el.playRail.querySelectorAll(".rail-btn")].indexOf(button);
+        triggerRailAction(button.dataset.railAction);
+        renderPlay();
+        touchInteraction();
+      });
+
+      el.seasonPanel.addEventListener("click", (event) => {
+        const pick = event.target.closest("[data-season-type]");
+        if (pick) {
+          applySeasonChoice(pick.dataset.seasonType, pick.dataset.seasonValue);
+          state.seasonFocusIndex = seasonPanelControls().indexOf(pick);
+          renderSeasonPanel();
+          return;
+        }
+        if (event.target.closest("#seasonRandom")) {
+          randomizeSeasonPanel();
+          return;
+        }
+        if (event.target.closest("#seasonReset")) {
+          resetSeasonPanelToRealtime();
+        }
+      });
+
+      document.addEventListener("click", (event) => {
+        const dot = event.target.closest("[data-dot]");
+        if (dot) {
+          setScene(Number(dot.dataset.dot), true);
+          touchInteraction();
+        }
+        const category = event.target.closest("[data-category]");
+        if (category) {
+          state.homeFocusZone = "categories";
+          selectCategory(category.dataset.category);
+          touchInteraction();
+        }
+      });
+
+      el.drawer.addEventListener("click", (event) => {
+        const close = event.target.closest("[data-close-drawer]");
+        if (close) {
+          closeDrawer();
+          return;
+        }
+        const favoriteScene = event.target.closest("[data-favorite-scene-id]");
+        if (favoriteScene) {
+          event.stopPropagation();
+          toggleFavoriteScene(favoriteScene.dataset.favoriteSceneId);
+          return;
+        }
+        const sceneItem = state.drawer === "menu" ? event.target.closest("[data-scene-id]") : null;
+        if (sceneItem) {
+          selectSceneById(sceneItem.dataset.sceneId);
+          closeDrawer();
+          return;
+        }
+        const screensaverItem = event.target.closest("[data-screensaver-action], [data-screensaver-setting]");
+        if (screensaverItem) {
+          triggerScreensaverDrawerItem(screensaverItem);
+          return;
+        }
+        const seasonAction = event.target.closest("[data-season-action]");
+        if (seasonAction) {
+          const labels = {
+            realtime: "当前已切换为实时同步",
+            sunset: "黄昏演绎将在下一版接入实时预览",
+            winter: "冬季演绎将在下一版接入实时预览"
+          };
+          showToast(labels[seasonAction.dataset.seasonAction] || "时季调节已更新");
+        }
+      });
+
+      el.drawer.addEventListener("input", (event) => {
+        const target = event.target;
+        if (target.dataset.setting) {
+          state.settings[target.dataset.setting] = target.checked;
+          normalizeSettings();
+          persist();
+          renderAll();
+          showToast(`${settingLabel(target.dataset.setting)}已${state.settings[target.dataset.setting] ? "开启" : "关闭"}`);
+          return;
+        }
+        if (target.dataset.range) {
+          state.settings[target.dataset.range] = Number(target.value);
+          normalizeSettings();
+          persist();
+          renderDrawer();
+          updateStatus();
+          refreshAutoplay();
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (state.page === "black") {
+          event.preventDefault();
+          wakeFromBlack();
+          return;
+        }
+
+        if (state.page === "sleep") {
+          event.preventDefault();
+          const returnToPlay = event.key === "Escape" || event.key === "Backspace" || event.key === " ";
+          wakeFromSleep(returnToPlay ? "play" : "home");
+          return;
+        }
+
+        if (state.drawer) {
+          const handled = handleDrawerKey(event);
+          if (handled) {
+            event.preventDefault();
+          }
+          if (event.key === "Escape" || event.key === "Backspace") {
+            event.preventDefault();
+            closeDrawer();
+          }
+          touchInteraction();
+          return;
+        }
+
+        if (event.key.toLowerCase() === "s") {
+          event.preventDefault();
+          openDrawer("settings");
+          touchInteraction();
+          return;
+        }
+
+        if (event.key.toLowerCase() === "m") {
+          event.preventDefault();
+          openDrawer("menu");
+          touchInteraction();
+          return;
+        }
+
+        if (state.page === "play" && state.seasonPanelOpen && (event.key === "Escape" || event.key === "Backspace")) {
+          event.preventDefault();
+          closeSeasonPanel();
+          touchInteraction();
+          return;
+        }
+
+        if (event.key === "Escape" || event.key === "Backspace") {
+          event.preventDefault();
+          if (state.page === "immersive") {
+            exitImmersive();
+          } else if (state.page === "play") {
+            exitToHome();
+          }
+          return;
+        }
+
+        let handled = false;
+        if (state.page === "home") handled = handleHomeKey(event);
+        if (state.page === "play") handled = handlePlayKey(event);
+        if (state.page === "immersive") {
+          if (event.key === "ArrowLeft") { setScene(state.index - 1, true); handled = true; }
+          if (event.key === "ArrowRight") { setScene(state.index + 1, true); handled = true; }
+          if (event.key === "Enter" || event.key === " ") { exitImmersive(); handled = true; }
+        }
+
+        if (handled) {
+          event.preventDefault();
+          touchInteraction();
+        }
+      });
+
+      ["click", "touchstart"].forEach((name) => {
+        document.addEventListener(name, () => {
+          if (state.page !== "sleep" && state.page !== "black") touchInteraction();
+        }, { passive: true });
+      });
+    }
+
+    function settingLabel(key) {
+      const map = {
+        showInfo: "嵌入式信息",
+        autoplayHome: "首页自动轮播",
+        allowSleep: "息屏显示",
+        allowBlack: "黑屏模式",
+        reduceMotion: "减少动效"
+      };
+      return map[key] || key;
+    }
+
+    function tick() {
+      refreshVisibleTimeOnly();
+
+      if (state.page === "home") {
+        if (state.drawer) return;
+        const targetScene = resolveScreensaverStartScene();
+        if (!targetScene) return;
+        const elapsed = Math.floor((Date.now() - state.lastInteractionAt) / 1000);
+        if (elapsed >= state.settings.screensaverStartTime * 60) {
+          const targetIndex = sceneSeeds.findIndex((scene) => scene.id === targetScene.id);
+          if (targetIndex >= 0) state.index = targetIndex;
+          syncCurrentVisualState();
+          enterPlay();
+        }
+        return;
+      }
+
+      if (state.page === "play" || state.page === "immersive") {
+        if (!state.settings.allowSleep || state.drawer) return;
+        const elapsed = Math.floor((Date.now() - state.lastInteractionAt) / 1000);
+        const remain = state.settings.sleepTimeout - elapsed;
+        if (remain <= 3 && remain > 0 && state.promptType !== "sleep") showPrompt("sleep", remain);
+        if (remain <= 0 && state.promptType !== "sleep") enterSleep();
+        return;
+      }
+
+      if (state.page === "sleep") {
+        if (!state.settings.allowBlack) return;
+        const elapsed = Math.floor((Date.now() - state.sleepStartedAt) / 1000);
+        const remain = state.settings.blackTimeout - elapsed;
+        if (remain <= 3 && remain > 0 && state.promptType !== "black") showPrompt("black", remain);
+        if (remain <= 0 && state.promptType !== "black") enterBlack();
+      }
+    }
+
+    function boot() {
+      loadPersisted();
+      if (!state.visualByScene[currentScene().id]) {
+        saveSceneVisualState(currentScene(), {
+          realtime: state.visualRealtime !== false,
+          preset: state.visualRealtime === false ? state.visualPreset : realtimeVisualPreset()
+        });
+      }
+      syncCurrentVisualState();
+      renderAll();
+      attachEvents();
+      refreshWeather();
+      setInterval(refreshWeather, 10 * 60 * 1000);
+      setInterval(tick, 1000);
+    }
+
+    boot();
+  </script>
+</body>
+</html>
